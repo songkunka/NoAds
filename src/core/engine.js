@@ -1,6 +1,6 @@
 /**
  * CleanVideo Engine
- * Central Orchestrator for CleanVideo on Mobile Safari and Desktop
+ * Central Orchestrator for CleanVideo with Thai Ad Blocking & Video Ad Acceleration
  */
 
 class CleanVideoEngine {
@@ -26,16 +26,13 @@ class CleanVideoEngine {
 
     this.observer = null;
     this.scanPending = false;
-    this.eventListeners = [];
   }
 
   loadState() {
     try {
       const saved = localStorage.getItem(this.storageKey);
       if (saved) return JSON.parse(saved);
-    } catch (e) {
-      // Fallback
-    }
+    } catch (e) {}
     return {
       enabled: true,
       debugMode: false,
@@ -47,9 +44,7 @@ class CleanVideoEngine {
   saveState() {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.state));
-    } catch (e) {
-      // Ignore
-    }
+    } catch (e) {}
   }
 
   isCurrentSiteWhitelisted() {
@@ -60,7 +55,7 @@ class CleanVideoEngine {
   handleAction(action) {
     if (!this.state.enabled || this.isCurrentSiteWhitelisted()) return;
 
-    if (action.type === 'closed_popup_button' || action.type === 'removed_popup_overlay') {
+    if (action.type === 'closed_popup_button' || action.type === 'removed_popup_overlay' || action.type === 'removed_thai_ad_banner') {
       this.stats.popupsClosed++;
     } else if (action.type === 'skip_ad') {
       this.stats.adsSkipped++;
@@ -77,31 +72,73 @@ class CleanVideoEngine {
     this.debugLogs.unshift(action);
     if (this.debugLogs.length > 30) this.debugLogs.pop();
 
-    // Trigger update on HUD
     if (this.onStatsUpdated) {
       this.onStatsUpdated(this.stats, action);
     }
   }
 
+  /**
+   * Inject high-priority CSS rules to hide Thai ad banners & popups instantly
+   */
+  injectAdblockCSS() {
+    if (document.getElementById('cleanvideo-adblock-rules')) return;
+
+    const hrefRules = (this.rules.global && this.rules.global.thaiAdHrefKeywords) || [
+      'ruay', 'ufa', 'slot', 'bet', 'casino', 'sagame', 'pgslot', 'gclub',
+      'ts911', 'sexygame', 'lotto', 'wmbet', 'hydra', 'baccarat', 'joker',
+      'lin.ee', 'line.me/R', 'cutt.ly', 'bit.ly', 'lihi1'
+    ];
+
+    const linkSelectors = hrefRules.map(k => `a[href*="${k}"]`).join(',\n');
+    const containerSelectors = (this.rules.global && this.rules.global.popupSelectors || []).join(',\n');
+
+    const css = `
+      ${linkSelectors},
+      ${containerSelectors},
+      .ad-click-trap,
+      .video-mask-ad {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    `;
+
+    const style = document.createElement('style');
+    style.id = 'cleanvideo-adblock-rules';
+    style.textContent = css;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
   start() {
-    if (!this.state.enabled || this.isCurrentSiteWhitelisted()) {
-      console.log('[CleanVideo] Protection paused or site whitelisted.');
-      return;
-    }
+    if (!this.state.enabled || this.isCurrentSiteWhitelisted()) return;
 
-    console.log('[CleanVideo] Starting video ad protection on Mobile Safari...');
+    console.log('[CleanVideo] Starting enhanced ad protection & video accelerator...');
 
-    // 1. Install redirect guard early
+    // 1. Instant CSS ad blocking
+    this.injectAdblockCSS();
+
+    // 2. Install redirect guard
     this.redirectGuard.install();
 
-    // 2. Initial scan
-    this.requestScan();
+    // 3. Initial fast scan
+    this.runCycle();
 
-    // 3. Setup Battery-friendly Throttled MutationObserver
+    // 4. Setup Battery-friendly Throttled MutationObserver
     this.setupObserver();
 
-    // 4. Listen to video playback events
+    // 5. Setup Video Playback & Ad Acceleration Listeners
     this.setupVideoListeners();
+
+    // 6. Fast-interval polling for active video playback (every 500ms)
+    setInterval(() => {
+      if (this.state.enabled) {
+        this.skipHandler.accelerateAdVideo();
+        this.runCycle();
+      }
+    }, 500);
   }
 
   setupObserver() {
@@ -111,18 +148,15 @@ class CleanVideoEngine {
       this.requestScan();
     });
 
-    if (document.body) {
-      this.observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
+    const target = document.body || document.documentElement;
+    if (target) {
+      this.observer.observe(target, { childList: true, subtree: true });
     } else {
       document.addEventListener('DOMContentLoaded', () => {
-        this.observer.observe(document.body, {
-          childList: true,
-          subtree: true
-        });
-        this.requestScan();
+        if (document.body) {
+          this.observer.observe(document.body, { childList: true, subtree: true });
+          this.requestScan();
+        }
       });
     }
   }
@@ -131,12 +165,11 @@ class CleanVideoEngine {
     if (this.scanPending) return;
     this.scanPending = true;
 
-    // Use requestAnimationFrame & setTimeout to avoid UI freeze on mobile
     window.requestAnimationFrame(() => {
       setTimeout(() => {
         this.runCycle();
         this.scanPending = false;
-      }, 80);
+      }, 50);
     });
   }
 
@@ -144,11 +177,11 @@ class CleanVideoEngine {
     if (!this.state.enabled || this.isCurrentSiteWhitelisted()) return;
 
     // Fast order:
-    // 1. Skip ads first (most time-sensitive)
+    // 1. Accelerate and skip ads immediately
     this.skipHandler.scanAndSkip();
-    // 2. Clean transparent overlays on video
+    // 2. Clean overlays & click-traps
     this.overlayHandler.scanAndClean();
-    // 3. Clean popups & dialogs
+    // 3. Clean popups, modals, and Thai betting banners
     this.popupHandler.scanAndHandle();
   }
 
@@ -158,14 +191,26 @@ class CleanVideoEngine {
       videos.forEach(vid => {
         if (!vid.dataset.cleanvideoBound) {
           vid.dataset.cleanvideoBound = 'true';
-          vid.addEventListener('timeupdate', () => this.runCycle());
-          vid.addEventListener('play', () => this.runCycle());
+          
+          vid.addEventListener('play', () => {
+            this.skipHandler.accelerateAdVideo();
+            this.runCycle();
+          });
+          vid.addEventListener('timeupdate', () => {
+            if (this.detector.isVideoPlayingAd(vid)) {
+              this.skipHandler.accelerateAdVideo();
+            }
+          });
+          vid.addEventListener('loadedmetadata', () => {
+            this.skipHandler.accelerateAdVideo();
+            this.runCycle();
+          });
         }
       });
     };
 
     bindVideos();
-    setInterval(bindVideos, 2500);
+    setInterval(bindVideos, 2000);
   }
 
   toggleEnabled() {
@@ -176,6 +221,8 @@ class CleanVideoEngine {
     } else {
       this.redirectGuard.uninstall();
       if (this.observer) this.observer.disconnect();
+      const style = document.getElementById('cleanvideo-adblock-rules');
+      if (style) style.remove();
     }
     return this.state.enabled;
   }

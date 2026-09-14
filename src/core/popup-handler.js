@@ -1,6 +1,6 @@
 /**
  * CleanVideo Popup Handler
- * Auto-close and remove intrusive ad popups, modals, and backdrops
+ * Auto-close popups, remove Thai gambling banners, and restore scrolling
  */
 
 class CleanVideoPopupHandler {
@@ -10,10 +10,15 @@ class CleanVideoPopupHandler {
     this.onAction = onAction || (() => {});
     this.processedElements = new WeakSet();
     this.closeKeywords = (rules.global && rules.global.closeKeywords) || [
-      'close', 'dismiss', 'ปิด', 'ปิดโฆษณา', '×', '✕', '✖', 'cancel'
+      'close', 'dismiss', 'ปิด', 'ปิดโฆษณา', 'ปิดหน้าต่างนี้', '×', '✕', '✖', 'cancel'
     ];
     this.closeAriaLabels = (rules.global && rules.global.closeAriaLabels) || [
-      'close', 'dismiss', 'close advertisement', 'close dialog', 'ปิด'
+      'close', 'dismiss', 'close advertisement', 'close dialog', 'ปิด', 'ปิดหน้าต่าง'
+    ];
+    this.thaiAdHrefs = (rules.global && rules.global.thaiAdHrefKeywords) || [
+      'ruay', 'ufa', 'slot', 'bet', 'casino', 'sagame', 'pgslot', 'gclub',
+      'ts911', 'sexygame', 'lotto', 'wmbet', 'hydra', 'baccarat', 'joker',
+      'lin.ee', 'line.me/R', 'cutt.ly', 'bit.ly', 'lihi1'
     ];
   }
 
@@ -22,13 +27,18 @@ class CleanVideoPopupHandler {
    */
   findCloseButton(container) {
     // 1. Check for standard close classes
-    const classSelectors = ['.close', '.btn-close', '.close-btn', '.popup-close', '[data-dismiss="modal"]'];
+    const classSelectors = [
+      '.close', '.btn-close', '.close-btn', '.popup-close', '.close-x',
+      '[class*="close"]', '[id*="close"]', '[data-dismiss="modal"]'
+    ];
     for (const sel of classSelectors) {
-      const btn = container.querySelector(sel);
-      if (btn && this.detector.isVisible(btn)) return btn;
+      try {
+        const btn = container.querySelector(sel);
+        if (btn && this.detector.isVisible(btn)) return btn;
+      } catch (e) {}
     }
 
-    // 2. Scan buttons and links inside container
+    // 2. Scan buttons and clickable links inside container
     const candidates = container.querySelectorAll('button, a, span, div[role="button"]');
     for (const el of candidates) {
       if (!this.detector.isVisible(el)) continue;
@@ -37,7 +47,7 @@ class CleanVideoPopupHandler {
       const aria = (el.getAttribute('aria-label') || '').toLowerCase();
       const title = (el.getAttribute('title') || '').toLowerCase();
 
-      if (this.closeKeywords.includes(text)) return el;
+      if (this.closeKeywords.some(kw => text === kw || text.includes(kw))) return el;
       if (this.closeAriaLabels.some(label => aria.includes(label) || title.includes(label))) return el;
     }
 
@@ -49,48 +59,79 @@ class CleanVideoPopupHandler {
    */
   restoreBodyScroll() {
     if (document.body) {
-      const bodyOverflow = window.getComputedStyle(document.body).overflow;
-      if (bodyOverflow === 'hidden') {
-        document.body.style.setProperty('overflow', 'auto', 'important');
-      }
+      document.body.style.setProperty('overflow', 'auto', 'important');
     }
     if (document.documentElement) {
-      const htmlOverflow = window.getComputedStyle(document.documentElement).overflow;
-      if (htmlOverflow === 'hidden') {
-        document.documentElement.style.setProperty('overflow', 'auto', 'important');
-      }
+      document.documentElement.style.setProperty('overflow', 'auto', 'important');
     }
+  }
+
+  /**
+   * Clean Thai Gambling Banners & Links based on AdBlock-Thai-Filters
+   */
+  cleanThaiGamblingBanners() {
+    // Search for any anchor link pointing to gambling/betting domains
+    const selector = this.thaiAdHrefs.map(kw => `a[href*="${kw}"]`).join(', ');
+    try {
+      const adLinks = document.querySelectorAll(selector);
+      for (const a of adLinks) {
+        if (this.processedElements.has(a)) continue;
+        this.processedElements.add(a);
+
+        // Find the top-most ad container for this link
+        const bannerContainer = a.closest('div[class*="banner"], div[id*="banner"], center, .header-ads, .ads-images, .ads-banner, #flt-bn, .pd-bn, div[style*="fixed"], div[style*="sticky"]') || a.parentElement;
+
+        if (bannerContainer && bannerContainer !== document.body && bannerContainer !== document.documentElement) {
+          bannerContainer.style.setProperty('display', 'none', 'important');
+          bannerContainer.setAttribute('data-cleanvideo-hidden', 'true');
+        } else {
+          a.style.setProperty('display', 'none', 'important');
+        }
+
+        this.onAction({
+          type: 'removed_thai_ad_banner',
+          reason: `Removed banner linking to ${a.href.slice(0, 45)}...`,
+          element: a,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+    } catch (e) {}
   }
 
   /**
    * Scan for ad popups and execute close/removal
    */
   scanAndHandle() {
-    // 1. Scan known popup selectors
+    // 1. Clean Thai Gambling Banners first
+    this.cleanThaiGamblingBanners();
+
+    // 2. Scan known popup & banner selectors
     const selectors = (this.rules.global && this.rules.global.popupSelectors) || [
-      '.ad-popup', '.popup-ad', '.modal-ad', '[class*="ad-banner"]', '.interstitial-ad'
+      '.ad-popup', '.popup-ad', '.modal-ad', '.video-overlay-ad',
+      '.header-ads', '.ads-images', '.ads-banner', '.floating-ad',
+      '.sweet-alert', '.swal2-container', '[class*="floating-banner"]'
     ];
 
     for (const sel of selectors) {
-      const popups = document.querySelectorAll(sel);
-      for (const popup of popups) {
-        if (this.processedElements.has(popup) || !this.detector.isVisible(popup)) continue;
+      try {
+        const popups = document.querySelectorAll(sel);
+        for (const popup of popups) {
+          if (this.processedElements.has(popup)) continue;
+          if (popup.id === 'cleanvideo-mobile-hud') continue;
 
-        const { score, reasons } = this.detector.scoreElement(popup);
-        if (score >= 40) {
-          this.handlePopupElement(popup, score, reasons);
+          this.handlePopupElement(popup, 90, ['matched_popup_selector']);
         }
-      }
+      } catch (e) {}
     }
 
-    // 2. Heuristic scan on fixed/absolute top-level containers
-    const topElements = document.querySelectorAll('body > div, body > section, body > aside');
-    for (const el of topElements) {
-      if (this.processedElements.has(el) || !this.detector.isVisible(el)) continue;
-      if (el.id === 'cleanvideo-mobile-hud') continue;
+    // 3. Scan all fixed/absolute floating modals and overlays in DOM
+    const floatingElements = document.querySelectorAll('div[class*="popup"], div[id*="popup"], div[class*="modal"], div[id*="modal"], div[class*="overlay"], div[class*="dialog"]');
+    for (const el of floatingElements) {
+      if (this.processedElements.has(el)) continue;
+      if (el.id === 'cleanvideo-mobile-hud' || el.closest('#cleanvideo-mobile-hud')) continue;
 
       const { score, reasons } = this.detector.scoreElement(el);
-      if (score >= 70) {
+      if (score >= 45) {
         this.handlePopupElement(el, score, reasons);
       }
     }
@@ -113,29 +154,25 @@ class CleanVideoPopupHandler {
           timestamp: new Date().toLocaleTimeString()
         });
         return;
-      } catch (err) {
-        console.warn('[CleanVideo] Close button click failed:', err);
-      }
+      } catch (err) {}
     }
 
-    // If score is very high (>= 75), safely remove or hide element
-    if (score >= 70) {
-      el.style.setProperty('display', 'none', 'important');
-      el.setAttribute('data-cleanvideo-hidden', 'true');
-      this.restoreBodyScroll();
+    // Hide or remove popup directly
+    el.style.setProperty('display', 'none', 'important');
+    el.setAttribute('data-cleanvideo-hidden', 'true');
+    this.restoreBodyScroll();
 
-      // Also clean up any lingering modal backdrop
-      const backdrops = document.querySelectorAll('.modal-backdrop, .ad-backdrop, .overlay-backdrop');
-      backdrops.forEach(bd => bd.remove());
+    // Remove any accompanying backdrop
+    const backdrops = document.querySelectorAll('.modal-backdrop, .ad-backdrop, .overlay-backdrop');
+    backdrops.forEach(bd => bd.remove());
 
-      this.onAction({
-        type: 'removed_popup_overlay',
-        reason: `Removed high-confidence ad popup (${score} pts: ${reasons.join(', ')})`,
-        element: el,
-        score,
-        timestamp: new Date().toLocaleTimeString()
-      });
-    }
+    this.onAction({
+      type: 'removed_popup_overlay',
+      reason: `Removed ad popup (${score} pts: ${reasons.join(', ')})`,
+      element: el,
+      score,
+      timestamp: new Date().toLocaleTimeString()
+    });
   }
 }
 

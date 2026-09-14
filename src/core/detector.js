@@ -1,6 +1,6 @@
 /**
  * CleanVideo Detector
- * Heuristic scoring and element detection engine
+ * Heuristic scoring and element detection engine with Thai ad filter support
  */
 
 class CleanVideoDetector {
@@ -8,7 +8,13 @@ class CleanVideoDetector {
     this.rules = rules;
     this.adKeywords = [
       'ad', 'ads', 'advert', 'advertisement', 'banner', 'popup',
-      'sponsor', 'promoted', 'โฆษณา', 'คาสิโน', 'สล็อต', 'bet', 'bonus'
+      'sponsor', 'promoted', 'โฆษณา', 'คาสิโน', 'สล็อต', 'bet', 'bonus',
+      'gambling', 'บาคาร่า', 'แทงบอล', 'หวย', 'jackpot'
+    ];
+    this.thaiAdHrefKeywords = (rules.global && rules.global.thaiAdHrefKeywords) || [
+      'ruay', 'ufa', 'slot', 'bet', 'casino', 'sagame', 'pgslot', 'gclub',
+      'ts911', 'sexygame', 'lotto', 'wmbet', 'hydra', 'baccarat', 'joker',
+      'lin.ee', 'line.me/R', 'cutt.ly', 'bit.ly', 'lihi1'
     ];
   }
 
@@ -61,6 +67,65 @@ class CleanVideoDetector {
   }
 
   /**
+   * Check if an element or its child <a> links to a known Thai gambling / betting ad
+   */
+  isThaiAdLink(el) {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    
+    // Check if element itself is an anchor or contains an anchor
+    const links = el.tagName === 'A' ? [el] : el.querySelectorAll('a');
+    for (const a of links) {
+      const href = (a.getAttribute('href') || '').toLowerCase();
+      if (!href || href === '#' || href === 'javascript:void(0);') continue;
+
+      for (const kw of this.thaiAdHrefKeywords) {
+        if (href.includes(kw)) {
+          return { isAd: true, keyword: kw, href };
+        }
+      }
+    }
+    return { isAd: false };
+  }
+
+  /**
+   * Check if a video element is currently playing a commercial/preroll ad
+   */
+  isVideoPlayingAd(vid) {
+    if (!vid || !(vid instanceof HTMLVideoElement)) return false;
+
+    // 1. Check parent player ad containers
+    const playerAdContainers = (this.rules.global && this.rules.global.playerAdContainers) || [
+      '.jw-ad-container', '.fluid_ad_container', '.vjs-ima3-ad-container',
+      '.ima-ad-container', '[class*="ad-container"]', '[class*="vast"]', '.video-ads'
+    ];
+    for (const sel of playerAdContainers) {
+      if (vid.closest(sel) || document.querySelector(sel)) return true;
+    }
+
+    // 2. Check if player has ad classes
+    const player = vid.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper') || vid.parentElement;
+    if (player) {
+      const pClass = (player.className || '').toString().toLowerCase();
+      if (pClass.includes('ad-playing') || pClass.includes('ad-active') || pClass.includes('jw-flag-ads')) {
+        return true;
+      }
+      // Check for visible countdown or skip button in player
+      const skipOrCountdown = player.querySelector('[class*="skip"], [class*="countdown"], [id*="skip"]');
+      if (skipOrCountdown && this.isVisible(skipOrCountdown)) {
+        return true;
+      }
+    }
+
+    // 3. Short duration check when ad indicator exists
+    const src = (vid.currentSrc || vid.src || '').toLowerCase();
+    if (src.includes('ad') || src.includes('preroll') || src.includes('vast')) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Calculate Heuristic Confidence Score for an element being an Ad or intrusive Overlay
    * Range: 0 to 100+
    */
@@ -78,25 +143,32 @@ class CleanVideoDetector {
     const rect = el.getBoundingClientRect();
     const classAndId = `${el.className || ''} ${el.id || ''}`.toLowerCase();
 
-    // 1. Z-Index evaluation
+    // 1. Thai Ad link check (Immediate High Confidence +50)
+    const thaiAd = this.isThaiAdLink(el);
+    if (thaiAd.isAd) {
+      score += 55;
+      reasons.push(`thai_gambling_link (${thaiAd.keyword})`);
+    }
+
+    // 2. Z-Index evaluation
     const zIndex = parseInt(style.zIndex, 10);
     if (!isNaN(zIndex)) {
       if (zIndex >= 99999) {
         score += 25;
         reasons.push(`very_high_z_index (${zIndex})`);
-      } else if (zIndex >= 1000) {
+      } else if (zIndex >= 500) {
         score += 15;
         reasons.push(`high_z_index (${zIndex})`);
       }
     }
 
-    // 2. Position evaluation
-    if (style.position === 'fixed' || style.position === 'absolute') {
+    // 3. Position evaluation (Floating / Fixed / Sticky)
+    if (style.position === 'fixed' || style.position === 'absolute' || style.position === 'sticky') {
       score += 15;
       reasons.push(`position_${style.position}`);
     }
 
-    // 3. Class and ID Ad keyword matching
+    // 4. Class and ID Ad keyword matching
     for (const kw of this.adKeywords) {
       const regex = new RegExp(`(^|[-_\\s])${kw}([-_\\s]|$)`, 'i');
       if (regex.test(classAndId)) {
@@ -106,34 +178,26 @@ class CleanVideoDetector {
       }
     }
 
-    // 4. Overlays Video Player
+    // 5. Overlays Video Player
     if (this.isOverVideo(el)) {
       score += 25;
       reasons.push('overlays_video_player');
     }
 
-    // 5. Contains iframe (often ad payload)
+    // 6. Contains iframe (often ad banner)
     const hasIframe = el.querySelector('iframe') !== null || el.tagName === 'IFRAME';
     if (hasIframe) {
       score += 20;
       reasons.push('contains_iframe');
     }
 
-    // 6. Covers full viewport or large area
+    // 7. Viewport coverage for fixed elements
     const vpWidth = window.innerWidth;
     const vpHeight = window.innerHeight;
     const coverage = (rect.width * rect.height) / (vpWidth * vpHeight);
-    if (coverage > 0.6 && style.position === 'fixed') {
-      score += 20;
+    if (coverage > 0.5 && style.position === 'fixed') {
+      score += 25;
       reasons.push(`viewport_coverage (${Math.round(coverage * 100)}%)`);
-    }
-
-    // 7. Suspicious opacity or pointer-events trap
-    if (rect.width > 200 && rect.height > 200 && (parseFloat(style.opacity) < 0.1 || style.background === 'transparent')) {
-      if (style.position === 'absolute' || style.position === 'fixed') {
-        score += 20;
-        reasons.push('invisible_click_trap');
-      }
     }
 
     return { score, reasons };

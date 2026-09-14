@@ -1,6 +1,7 @@
 /**
  * CleanVideo Skip Handler
- * Auto-detect and trigger "Skip Ad" / "ข้ามโฆษณา" buttons on video players
+ * Fast-forward video ads (16x speed & instant seek) and auto-trigger skip buttons
+ * Eliminates the 5-second countdown wait on streaming sites
  */
 
 class CleanVideoSkipHandler {
@@ -10,7 +11,7 @@ class CleanVideoSkipHandler {
     this.onAction = onAction || (() => {});
     this.clickedElements = new WeakSet();
     this.lastSkipTime = 0;
-    this.minInterval = 600; // minimum ms between skip actions
+    this.minInterval = 400;
   }
 
   /**
@@ -20,54 +21,49 @@ class CleanVideoSkipHandler {
     if (!el) return false;
 
     try {
+      // Remove any disabled or blocking styles
+      el.removeAttribute('disabled');
+      el.style.setProperty('pointer-events', 'auto', 'important');
+      el.style.setProperty('cursor', 'pointer', 'important');
+
       const rect = el.getBoundingClientRect();
       const clientX = rect.left + rect.width / 2;
       const clientY = rect.top + rect.height / 2;
 
-      // 1. Pointer & Touch events for iOS Safari
-      const touchObj = new Touch({
-        identifier: Date.now(),
-        target: el,
-        clientX,
-        clientY,
-        radiusX: 2.5,
-        radiusY: 2.5,
-        rotationAngle: 0,
-        force: 0.5
-      });
-
-      const touchEventInit = {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        touches: [touchObj],
-        targetTouches: [touchObj],
-        changedTouches: [touchObj]
-      };
-
+      // Pointer & Touch events for iOS Safari
       try {
-        el.dispatchEvent(new TouchEvent('touchstart', touchEventInit));
-        el.dispatchEvent(new TouchEvent('touchend', touchEventInit));
-      } catch (e) {
-        // Fallback if Touch constructor fails in some environments
-      }
+        const touchObj = new Touch({
+          identifier: Date.now(),
+          target: el,
+          clientX,
+          clientY,
+          radiusX: 2.5,
+          radiusY: 2.5,
+          force: 0.5
+        });
 
-      // 2. Mouse events
-      const mouseEventInit = {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX,
-        clientY
-      };
-      el.dispatchEvent(new MouseEvent('mousedown', mouseEventInit));
-      el.dispatchEvent(new MouseEvent('mouseup', mouseEventInit));
+        const touchInit = {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          touches: [touchObj],
+          targetTouches: [touchObj],
+          changedTouches: [touchObj]
+        };
 
-      // 3. Native click
+        el.dispatchEvent(new TouchEvent('touchstart', touchInit));
+        el.dispatchEvent(new TouchEvent('touchend', touchInit));
+      } catch (e) {}
+
+      // Mouse events
+      const mouseInit = { bubbles: true, cancelable: true, view: window, clientX, clientY };
+      el.dispatchEvent(new MouseEvent('mousedown', mouseInit));
+      el.dispatchEvent(new MouseEvent('mouseup', mouseInit));
+
+      // Native click
       el.click();
       return true;
     } catch (err) {
-      console.warn('[CleanVideo] Safe click fallback:', err);
       try {
         el.click();
         return true;
@@ -78,9 +74,52 @@ class CleanVideoSkipHandler {
   }
 
   /**
-   * Scan page and video player for active Skip buttons
+   * Fast-forward or instant-seek ad video to bypass the 5-second countdown
+   */
+  accelerateAdVideo() {
+    const videos = document.querySelectorAll('video');
+    for (const vid of videos) {
+      if (this.detector.isVideoPlayingAd(vid)) {
+        try {
+          // 1. Mute ad immediately
+          vid.muted = true;
+
+          // 2. Set to maximum playback rate (16x on Safari/WebKit)
+          if (vid.playbackRate < 16.0) {
+            vid.playbackRate = 16.0;
+          }
+
+          // 3. Instant seek to the end of ad if duration is known
+          if (Number.isFinite(vid.duration) && vid.duration > 0 && vid.currentTime < vid.duration - 0.1) {
+            vid.currentTime = vid.duration - 0.05;
+          }
+        } catch (err) {
+          // PlaybackRate or seeking might be guarded by custom player
+        }
+      }
+    }
+
+    // Try direct JWPlayer API skip if available
+    try {
+      if (typeof window.jwplayer === 'function') {
+        const players = document.querySelectorAll('.jwplayer');
+        players.forEach(p => {
+          const jw = window.jwplayer(p.id);
+          if (jw && typeof jw.skipAd === 'function') {
+            jw.skipAd();
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Scan page and video player for active Skip buttons and countdowns
    */
   scanAndSkip() {
+    // Accelerate ad video first so countdown finishes in < 0.2s
+    this.accelerateAdVideo();
+
     const now = Date.now();
     if (now - this.lastSkipTime < this.minInterval) return false;
 
@@ -102,10 +141,10 @@ class CleanVideoSkipHandler {
       }
     }
 
-    // 2. Global keyword-based detection on buttons, anchors, and clickable divs
-    const candidates = document.querySelectorAll('button, a, [role="button"], div[class*="skip"], span[class*="skip"]');
+    // 2. Global detection: search for any button or clickable element containing skip or countdown keywords
+    const candidates = document.querySelectorAll('button, a, [role="button"], div[class*="skip"], span[class*="skip"], div[class*="countdown"]');
     const skipKeywords = (this.rules.global && this.rules.global.skipKeywords) || [
-      'ข้ามโฆษณา', 'ข้าม', 'skip ad', 'skip advertisement', 'skip'
+      'ข้ามโฆษณา', 'ข้าม', 'ข้ามใน', 'skip ad', 'skip', 'skip in'
     ];
 
     for (const el of candidates) {
@@ -116,20 +155,18 @@ class CleanVideoSkipHandler {
       const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
       const title = (el.getAttribute('title') || '').toLowerCase();
 
+      // Check if matches skip keywords or has skip class
       const matchesKeyword = skipKeywords.some(kw => 
-        text === kw || 
-        text.startsWith(kw) || 
-        ariaLabel.includes(kw) || 
-        title.includes(kw)
+        text.includes(kw) || ariaLabel.includes(kw) || title.includes(kw)
       );
 
-      if (matchesKeyword) {
-        // Must be near or over a video, or have skip class/attribute
-        const isNearVideo = this.detector.isOverVideo(el) || el.closest('.video-player') || el.closest('#player') || el.closest('.player');
-        const hasSkipClass = /skip/i.test(el.className) || /skip/i.test(el.id);
+      const hasSkipClass = /skip|countdown/i.test(`${el.className} ${el.id}`);
 
-        if (isNearVideo || hasSkipClass || text.length <= 18) {
-          this.executeSkip(el, `keyword_match ("${text || ariaLabel}")`);
+      if (matchesKeyword || hasSkipClass) {
+        const isNearVideo = this.detector.isOverVideo(el) || el.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper');
+        
+        if (isNearVideo || hasSkipClass || text.length <= 25) {
+          this.executeSkip(el, `auto_skip ("${text || ariaLabel || el.className}")`);
           return true;
         }
       }

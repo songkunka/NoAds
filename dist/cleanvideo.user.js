@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CleanVideo for Mobile Safari
 // @namespace    https://github.com/cleanvideo
-// @version      1.0.0
-// @description  Auto-skip video ads, auto-close popups, remove transparent overlays, and block redirect traps on Mobile Safari (iOS) and Desktop
+// @version      1.1.0
+// @description  Auto-skip video ads without waiting 5 seconds, auto-close popups, remove Thai gambling banners, and block redirect traps on Mobile Safari (iOS) and Desktop
 // @author       CleanVideo Team
 // @match        *://*/*
 // @exclude      *://localhost*
@@ -19,24 +19,42 @@
   window.__CLEANVIDEO_INSTALLED__ = true;
 
   /* ==========================================================================
-     1. RULES CONFIGURATION
+     1. RULES CONFIGURATION (WITH THAI AD/GAMBLING FILTERS)
      ========================================================================== */
   const RULES = {
-    version: "1.0.0",
+    version: "1.1.0",
     global: {
       skipKeywords: [
-        "ข้ามโฆษณา", "ข้าม", "skip ad", "skip advertisement", "skip ads", "skip intro", "skip", "ข้ามตอน"
+        "ข้ามโฆษณา", "ข้าม", "ข้ามใน", "skip ad", "skip advertisement", "skip ads", "skip intro", "skip", "ข้ามตอน", "skip in"
       ],
       closeKeywords: [
-        "close", "dismiss", "ปิด", "ปิดโฆษณา", "ข้ามและปิด", "×", "✕", "✖", "cancel"
+        "close", "dismiss", "ปิด", "ปิดโฆษณา", "ปิดหน้าต่างนี้", "ข้ามและปิด", "×", "✕", "✖", "cancel"
       ],
       closeAriaLabels: [
         "close", "dismiss", "close advertisement", "close dialog", "ปิด", "ปิดหน้าต่าง"
       ],
+      thaiAdHrefKeywords: [
+        "ruay", "ufa", "slot", "bet", "casino", "sagame", "pgslot", "gclub",
+        "ts911", "sexygame", "lotto", "wmbet", "hydra", "baccarat", "joker",
+        "ambbet", "superslot", "bk8", "w88", "dafabet", "168", "lin.ee",
+        "line.me/R", "cutt.ly", "bit.ly", "lihi1", "huc99", "aka555", "037uhd",
+        "agobet", "zeed678", "alpha88", "juad888", "icasino", "wstar99",
+        "huaylike", "texas789", "ptgame88", "panama888", "london168", "live222th",
+        "brazil999", "ssgame", "kingdom66", "hotgraph88", "newyork888", "lockdown168"
+      ],
       popupSelectors: [
         ".ad-popup", ".popup-ad", ".modal-ad", ".video-overlay-ad",
-        "[class*='ad-banner']", "[class*='overlay-ad']", "[id*='ad-popup']",
-        "[id*='popup-ad']", ".interstitial-ad", ".floating-ad"
+        ".header-ads", ".ads-images", ".ads-banner", ".img-banner-center-bottom",
+        ".bounce.animated.kosana", "#flt-bn", ".pd-bn", "[class*='ad-banner']",
+        "[class*='overlay-ad']", "[id*='ad-popup']", "[id*='popup-ad']",
+        ".interstitial-ad", ".floating-ad", ".banner-floating", "[id^='ads-']",
+        "[class^='ads-']", ".sweet-alert", ".swal2-container", "[class*='floating-banner']",
+        "[id*='banner-bottom']", "[class*='banner-sticky']"
+      ],
+      playerAdContainers: [
+        ".jw-ad-container", ".fluid_ad_container", ".vjs-ima3-ad-container",
+        ".ima-ad-container", "[class*='ad-container']", "[class*='vast-container']",
+        "[id*='ad-player']", "[class*='ad-player']", ".video-ads", ".ytp-ad-module"
       ]
     },
     domains: {
@@ -44,20 +62,62 @@
         skipSelectors: [
           ".ytp-skip-ad-button", ".ytp-ad-skip-button", ".ytp-ad-skip-button-modern",
           ".ytp-ad-skip-button-slot button"
+        ],
+        overlaySelectors: [
+          ".ytp-ad-overlay-container", ".ytp-ad-message-container", ".ytp-ad-action-interstitial"
         ]
       },
       "dailymotion.com": {
         skipSelectors: [".dmp_AdSkipButton", "[class*='ad-skip']"]
       },
       "generic-streaming": {
-        skipSelectors: ["[class*='skip-btn']", "[id*='skip-ad']", "[class*='skipAd']"],
-        closeSelectors: ["[class*='close-btn']", "[class*='btn-close']", "[class*='close-ad']"]
+        skipSelectors: [
+          "[class*='skip-btn']", "[id*='skip-ad']", "[class*='skipAd']",
+          "[class*='skip-button']", ".jw-skip", ".jw-skip-icon", ".fluid_ad_skip",
+          ".skipButton", "[class*='btn-skip']"
+        ],
+        closeSelectors: [
+          "[class*='close-btn']", "[class*='btn-close']", "[class*='close-ad']",
+          ".close", ".close-x", ".popup-close"
+        ]
       }
     }
   };
 
   /* ==========================================================================
-     2. STYLES (MOBILE HUD)
+     2. IMMEDIATE CSS BLOCKLIST INJECTION (Instant Ad & Banner Hiding)
+     ========================================================================== */
+  function injectFastBlocklist() {
+    if (document.getElementById('cleanvideo-adblock-rules')) return;
+
+    const linkRules = RULES.global.thaiAdHrefKeywords.map(k => `a[href*="${k}"]`).join(',\n');
+    const containerRules = RULES.global.popupSelectors.join(',\n');
+
+    const css = `
+      ${linkRules},
+      ${containerRules},
+      .ad-click-trap,
+      .video-mask-ad {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    `;
+
+    const style = document.createElement('style');
+    style.id = 'cleanvideo-adblock-rules';
+    style.textContent = css;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  // Inject CSS as early as possible
+  injectFastBlocklist();
+
+  /* ==========================================================================
+     3. STYLES (MOBILE HUD)
      ========================================================================== */
   const HUD_CSS = `
     #cleanvideo-mobile-hud {
@@ -154,23 +214,24 @@
     .cv-debug-panel.show { display: block; }
   `;
 
-  function injectStyles() {
+  function injectHUDStyles() {
     const styleEl = document.createElement('style');
-    styleEl.id = 'cleanvideo-styles';
+    styleEl.id = 'cleanvideo-hud-styles';
     styleEl.textContent = HUD_CSS;
     (document.head || document.documentElement).appendChild(styleEl);
   }
 
   /* ==========================================================================
-     3. DETECTOR MODULE
+     4. DETECTOR MODULE
      ========================================================================== */
   class CleanVideoDetector {
     constructor(rules) {
       this.rules = rules;
       this.adKeywords = [
         'ad', 'ads', 'advert', 'advertisement', 'banner', 'popup',
-        'sponsor', 'promoted', 'โฆษณา', 'คาสิโน', 'สล็อต', 'bet'
+        'sponsor', 'promoted', 'โฆษณา', 'คาสิโน', 'สล็อต', 'bet', 'bonus', 'บาคาร่า'
       ];
+      this.thaiAdHrefs = rules.global.thaiAdHrefKeywords || [];
     }
 
     isVisible(el) {
@@ -207,6 +268,29 @@
       return false;
     }
 
+    isVideoPlayingAd(vid) {
+      if (!vid || !(vid instanceof HTMLVideoElement)) return false;
+      const playerAdContainers = RULES.global.playerAdContainers || [];
+      for (const sel of playerAdContainers) {
+        if (vid.closest(sel) || document.querySelector(sel)) return true;
+      }
+
+      const player = vid.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper') || vid.parentElement;
+      if (player) {
+        const pClass = (player.className || '').toString().toLowerCase();
+        if (pClass.includes('ad-playing') || pClass.includes('ad-active') || pClass.includes('jw-flag-ads')) {
+          return true;
+        }
+        const skipOrCountdown = player.querySelector('[class*="skip"], [class*="countdown"], [id*="skip"]');
+        if (skipOrCountdown && this.isVisible(skipOrCountdown)) return true;
+      }
+
+      const src = (vid.currentSrc || vid.src || '').toLowerCase();
+      if (src.includes('ad') || src.includes('preroll') || src.includes('vast')) return true;
+
+      return false;
+    }
+
     scoreElement(el) {
       if (!el || !(el instanceof HTMLElement)) return { score: 0, reasons: [] };
       if (el.tagName === 'VIDEO' || el.closest('video') || el.closest('#cleanvideo-mobile-hud')) {
@@ -219,13 +303,26 @@
       const rect = el.getBoundingClientRect();
       const classAndId = `${el.className || ''} ${el.id || ''}`.toLowerCase();
 
+      // Thai Gambling Link Check
+      const links = el.tagName === 'A' ? [el] : el.querySelectorAll('a');
+      for (const a of links) {
+        const href = (a.getAttribute('href') || '').toLowerCase();
+        for (const kw of this.thaiAdHrefs) {
+          if (href.includes(kw)) {
+            score += 55;
+            reasons.push(`thai_gambling_link (${kw})`);
+            break;
+          }
+        }
+      }
+
       const zIndex = parseInt(style.zIndex, 10);
       if (!isNaN(zIndex)) {
         if (zIndex >= 99999) { score += 25; reasons.push(`very_high_z_index (${zIndex})`); }
-        else if (zIndex >= 1000) { score += 15; reasons.push(`high_z_index (${zIndex})`); }
+        else if (zIndex >= 500) { score += 15; reasons.push(`high_z_index (${zIndex})`); }
       }
 
-      if (style.position === 'fixed' || style.position === 'absolute') {
+      if (style.position === 'fixed' || style.position === 'absolute' || style.position === 'sticky') {
         score += 15; reasons.push(`position_${style.position}`);
       }
 
@@ -251,7 +348,7 @@
   }
 
   /* ==========================================================================
-     4. SKIP HANDLER
+     5. SKIP HANDLER (WITH 16X SPEED AD ACCELERATOR & INSTANT SEEK)
      ========================================================================== */
   class CleanVideoSkipHandler {
     constructor(detector, rules, onAction) {
@@ -260,24 +357,21 @@
       this.onAction = onAction || (() => {});
       this.clickedElements = new WeakSet();
       this.lastSkipTime = 0;
-      this.minInterval = 600;
+      this.minInterval = 400;
     }
 
     simulateSafeClick(el) {
       if (!el) return false;
       try {
+        el.removeAttribute('disabled');
+        el.style.setProperty('pointer-events', 'auto', 'important');
+
         const rect = el.getBoundingClientRect();
         const clientX = rect.left + rect.width / 2;
         const clientY = rect.top + rect.height / 2;
 
-        const touchObj = new Touch({
-          identifier: Date.now(),
-          target: el,
-          clientX,
-          clientY
-        });
-
         try {
+          const touchObj = new Touch({ identifier: Date.now(), target: el, clientX, clientY });
           el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [touchObj] }));
           el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [touchObj] }));
         } catch (e) {}
@@ -291,7 +385,39 @@
       }
     }
 
+    /**
+     * Fast-forward or instant-seek ad video to bypass the 5-second countdown
+     */
+    accelerateAdVideo() {
+      const videos = document.querySelectorAll('video');
+      for (const vid of videos) {
+        if (this.detector.isVideoPlayingAd(vid)) {
+          try {
+            vid.muted = true;
+            if (vid.playbackRate < 16.0) {
+              vid.playbackRate = 16.0;
+            }
+            if (Number.isFinite(vid.duration) && vid.duration > 0 && vid.currentTime < vid.duration - 0.1) {
+              vid.currentTime = vid.duration - 0.05;
+            }
+          } catch (e) {}
+        }
+      }
+
+      try {
+        if (typeof window.jwplayer === 'function') {
+          const players = document.querySelectorAll('.jwplayer');
+          players.forEach(p => {
+            const jw = window.jwplayer(p.id);
+            if (jw && typeof jw.skipAd === 'function') jw.skipAd();
+          });
+        }
+      } catch (e) {}
+    }
+
     scanAndSkip() {
+      this.accelerateAdVideo();
+
       const now = Date.now();
       if (now - this.lastSkipTime < this.minInterval) return false;
 
@@ -312,8 +438,8 @@
         }
       }
 
-      const candidates = document.querySelectorAll('button, a, [role="button"], div[class*="skip"], span[class*="skip"]');
-      const skipKeywords = (this.rules.global && this.rules.global.skipKeywords) || ['ข้ามโฆษณา', 'ข้าม', 'skip ad', 'skip'];
+      const candidates = document.querySelectorAll('button, a, [role="button"], div[class*="skip"], span[class*="skip"], div[class*="countdown"]');
+      const skipKeywords = this.rules.global.skipKeywords || ['ข้ามโฆษณา', 'ข้าม', 'skip ad', 'skip'];
 
       for (const el of candidates) {
         if (this.clickedElements.has(el)) continue;
@@ -321,17 +447,13 @@
 
         const text = this.detector.getNormalizedText(el);
         const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+        const matchesKeyword = skipKeywords.some(kw => text.includes(kw) || ariaLabel.includes(kw));
+        const hasSkipClass = /skip|countdown/i.test(`${el.className} ${el.id}`);
 
-        const matchesKeyword = skipKeywords.some(kw =>
-          text === kw || text.startsWith(kw) || ariaLabel.includes(kw)
-        );
-
-        if (matchesKeyword) {
-          const isNearVideo = this.detector.isOverVideo(el) || el.closest('.video-player') || el.closest('.player');
-          const hasSkipClass = /skip/i.test(el.className) || /skip/i.test(el.id);
-
-          if (isNearVideo || hasSkipClass || text.length <= 18) {
-            this.executeSkip(el, `keyword_match ("${text || ariaLabel}")`);
+        if (matchesKeyword || hasSkipClass) {
+          const isNearVideo = this.detector.isOverVideo(el) || el.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper');
+          if (isNearVideo || hasSkipClass || text.length <= 25) {
+            this.executeSkip(el, `auto_skip ("${text || ariaLabel || el.className}")`);
             return true;
           }
         }
@@ -356,7 +478,7 @@
   }
 
   /* ==========================================================================
-     5. POPUP & OVERLAY HANDLERS
+     6. POPUP & THAI BANNER HANDLER
      ========================================================================== */
   class CleanVideoPopupHandler {
     constructor(detector, rules, onAction) {
@@ -364,47 +486,82 @@
       this.rules = rules || {};
       this.onAction = onAction || (() => {});
       this.processedElements = new WeakSet();
-      this.closeKeywords = (rules.global && rules.global.closeKeywords) || ['close', 'dismiss', 'ปิด', '×', '✕'];
+      this.closeKeywords = rules.global.closeKeywords || ['close', 'dismiss', 'ปิด', '×', '✕'];
+      this.closeAriaLabels = rules.global.closeAriaLabels || ['close', 'dismiss', 'ปิด'];
+      this.thaiAdHrefs = rules.global.thaiAdHrefKeywords || [];
     }
 
     findCloseButton(container) {
-      const classSelectors = ['.close', '.btn-close', '.close-btn', '.popup-close', '[data-dismiss="modal"]'];
+      const classSelectors = [
+        '.close', '.btn-close', '.close-btn', '.popup-close', '.close-x',
+        '[class*="close"]', '[id*="close"]', '[data-dismiss="modal"]'
+      ];
       for (const sel of classSelectors) {
-        const btn = container.querySelector(sel);
-        if (btn && this.detector.isVisible(btn)) return btn;
+        try {
+          const btn = container.querySelector(sel);
+          if (btn && this.detector.isVisible(btn)) return btn;
+        } catch (e) {}
       }
 
       const candidates = container.querySelectorAll('button, a, span, div[role="button"]');
       for (const el of candidates) {
         if (!this.detector.isVisible(el)) continue;
         const text = this.detector.getNormalizedText(el);
-        if (this.closeKeywords.includes(text)) return el;
+        const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+        if (this.closeKeywords.some(kw => text === kw || text.includes(kw))) return el;
+        if (this.closeAriaLabels.some(l => aria.includes(l))) return el;
       }
       return null;
     }
 
     restoreBodyScroll() {
-      if (document.body && window.getComputedStyle(document.body).overflow === 'hidden') {
-        document.body.style.setProperty('overflow', 'auto', 'important');
-      }
+      if (document.body) document.body.style.setProperty('overflow', 'auto', 'important');
+      if (document.documentElement) document.documentElement.style.setProperty('overflow', 'auto', 'important');
+    }
+
+    cleanThaiGamblingBanners() {
+      const selector = this.thaiAdHrefs.map(kw => `a[href*="${kw}"]`).join(', ');
+      try {
+        const adLinks = document.querySelectorAll(selector);
+        for (const a of adLinks) {
+          if (this.processedElements.has(a)) continue;
+          this.processedElements.add(a);
+
+          const banner = a.closest('div[class*="banner"], div[id*="banner"], center, .header-ads, .ads-images, .ads-banner, #flt-bn, .pd-bn, div[style*="fixed"], div[style*="sticky"]') || a.parentElement;
+          if (banner && banner !== document.body && banner !== document.documentElement) {
+            banner.style.setProperty('display', 'none', 'important');
+          } else {
+            a.style.setProperty('display', 'none', 'important');
+          }
+
+          this.onAction({
+            type: 'removed_thai_ad_banner',
+            reason: `Removed gambling banner (${a.href.slice(0, 45)}...)`,
+            timestamp: new Date().toLocaleTimeString()
+          });
+        }
+      } catch (e) {}
     }
 
     scanAndHandle() {
-      const selectors = (this.rules.global && this.rules.global.popupSelectors) || ['.ad-popup', '.popup-ad'];
+      this.cleanThaiGamblingBanners();
+
+      const selectors = this.rules.global.popupSelectors || ['.ad-popup', '.popup-ad'];
       for (const sel of selectors) {
-        const popups = document.querySelectorAll(sel);
-        for (const popup of popups) {
-          if (this.processedElements.has(popup) || !this.detector.isVisible(popup)) continue;
-          const { score, reasons } = this.detector.scoreElement(popup);
-          if (score >= 40) this.handlePopupElement(popup, score, reasons);
-        }
+        try {
+          const popups = document.querySelectorAll(sel);
+          for (const popup of popups) {
+            if (this.processedElements.has(popup) || popup.id === 'cleanvideo-mobile-hud') continue;
+            this.handlePopupElement(popup, 90, ['matched_popup_selector']);
+          }
+        } catch (e) {}
       }
 
-      const topElements = document.querySelectorAll('body > div, body > section');
-      for (const el of topElements) {
-        if (this.processedElements.has(el) || !this.detector.isVisible(el) || el.id === 'cleanvideo-mobile-hud') continue;
+      const floatingElements = document.querySelectorAll('div[class*="popup"], div[id*="popup"], div[class*="modal"], div[id*="modal"], div[class*="overlay"], div[class*="dialog"]');
+      for (const el of floatingElements) {
+        if (this.processedElements.has(el) || el.id === 'cleanvideo-mobile-hud' || el.closest('#cleanvideo-mobile-hud')) continue;
         const { score, reasons } = this.detector.scoreElement(el);
-        if (score >= 70) this.handlePopupElement(el, score, reasons);
+        if (score >= 45) this.handlePopupElement(el, score, reasons);
       }
     }
 
@@ -424,18 +581,23 @@
         } catch (e) {}
       }
 
-      if (score >= 70) {
-        el.style.setProperty('display', 'none', 'important');
-        this.restoreBodyScroll();
-        this.onAction({
-          type: 'removed_popup_overlay',
-          reason: `Removed ad popup (${score} pts)`,
-          timestamp: new Date().toLocaleTimeString()
-        });
-      }
+      el.style.setProperty('display', 'none', 'important');
+      this.restoreBodyScroll();
+
+      const backdrops = document.querySelectorAll('.modal-backdrop, .ad-backdrop, .overlay-backdrop');
+      backdrops.forEach(bd => bd.remove());
+
+      this.onAction({
+        type: 'removed_popup_overlay',
+        reason: `Removed ad popup (${score} pts)`,
+        timestamp: new Date().toLocaleTimeString()
+      });
     }
   }
 
+  /* ==========================================================================
+     7. OVERLAY HANDLER & REDIRECT GUARD
+     ========================================================================== */
   class CleanVideoOverlayHandler {
     constructor(detector, rules, onAction) {
       this.detector = detector;
@@ -449,7 +611,7 @@
       for (const video of videos) {
         const vRect = video.getBoundingClientRect();
         if (vRect.width === 0 || vRect.height === 0) continue;
-        const playerParent = video.closest('.video-player') || video.parentElement;
+        const playerParent = video.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper') || video.parentElement;
         if (!playerParent) continue;
 
         const potentialOverlays = playerParent.querySelectorAll('div, a');
@@ -484,9 +646,6 @@
     }
   }
 
-  /* ==========================================================================
-     6. REDIRECT GUARD
-     ========================================================================== */
   class CleanVideoRedirectGuard {
     constructor(onAction) {
       this.onAction = onAction || (() => {});
@@ -501,7 +660,7 @@
 
       window.open = function (url, target, features) {
         const urlStr = (url || '').toString();
-        const isAd = /popads|adcash|bet\d+|casino|slot|click\.|syndication/i.test(urlStr);
+        const isAd = /popads|adcash|bet\d+|casino|slot|click\.|syndication|ufa|ruay|line\.me/i.test(urlStr);
         if (isAd || !urlStr) {
           self.onAction({
             type: 'blocked_redirect',
@@ -524,7 +683,7 @@
   }
 
   /* ==========================================================================
-     7. CENTRAL ENGINE
+     8. CENTRAL ENGINE
      ========================================================================== */
   class CleanVideoEngine {
     constructor(rules) {
@@ -562,10 +721,15 @@
 
     handleAction(action) {
       if (!this.state.enabled || this.isWhitelisted()) return;
-      if (action.type === 'closed_popup_button' || action.type === 'removed_popup_overlay') this.stats.popupsClosed++;
-      else if (action.type === 'skip_ad') this.stats.adsSkipped++;
-      else if (action.type === 'neutralized_video_overlay') this.stats.overlaysRemoved++;
-      else if (action.type === 'blocked_redirect') this.stats.redirectsBlocked++;
+      if (action.type === 'closed_popup_button' || action.type === 'removed_popup_overlay' || action.type === 'removed_thai_ad_banner') {
+        this.stats.popupsClosed++;
+      } else if (action.type === 'skip_ad') {
+        this.stats.adsSkipped++;
+      } else if (action.type === 'neutralized_video_overlay') {
+        this.stats.overlaysRemoved++;
+      } else if (action.type === 'blocked_redirect') {
+        this.stats.redirectsBlocked++;
+      }
 
       if (this.onStatsUpdated) this.onStatsUpdated(this.stats, action);
     }
@@ -573,7 +737,7 @@
     start() {
       if (!this.state.enabled || this.isWhitelisted()) return;
       this.redirectGuard.install();
-      this.requestScan();
+      this.runCycle();
 
       this.observer = new MutationObserver(() => this.requestScan());
       const target = document.body || document.documentElement;
@@ -581,7 +745,41 @@
         this.observer.observe(target, { childList: true, subtree: true });
       }
 
-      setInterval(() => this.requestScan(), 1200);
+      // Fast-interval polling for video playback and ad skipping
+      setInterval(() => {
+        if (this.state.enabled) {
+          this.skipHandler.accelerateAdVideo();
+          this.runCycle();
+        }
+      }, 500);
+
+      this.setupVideoListeners();
+    }
+
+    setupVideoListeners() {
+      const bindVideos = () => {
+        const videos = document.querySelectorAll('video');
+        videos.forEach(vid => {
+          if (!vid.dataset.cleanvideoBound) {
+            vid.dataset.cleanvideoBound = 'true';
+            vid.addEventListener('play', () => {
+              this.skipHandler.accelerateAdVideo();
+              this.runCycle();
+            });
+            vid.addEventListener('timeupdate', () => {
+              if (this.detector.isVideoPlayingAd(vid)) {
+                this.skipHandler.accelerateAdVideo();
+              }
+            });
+            vid.addEventListener('loadedmetadata', () => {
+              this.skipHandler.accelerateAdVideo();
+              this.runCycle();
+            });
+          }
+        });
+      };
+      bindVideos();
+      setInterval(bindVideos, 2000);
     }
 
     requestScan() {
@@ -591,7 +789,7 @@
         setTimeout(() => {
           this.runCycle();
           this.scanPending = false;
-        }, 60);
+        }, 50);
       });
     }
 
@@ -621,7 +819,7 @@
   }
 
   /* ==========================================================================
-     8. MOBILE HUD CONTROLLER
+     9. MOBILE HUD CONTROLLER
      ========================================================================== */
   class CleanVideoHUD {
     constructor(engine) {
@@ -726,13 +924,13 @@
   }
 
   /* ==========================================================================
-     9. BOOTSTRAP
+     10. BOOTSTRAP
      ========================================================================== */
   const engine = new CleanVideoEngine(RULES);
   const hud = new CleanVideoHUD(engine);
 
   function initialize() {
-    injectStyles();
+    injectHUDStyles();
     hud.mount();
     engine.start();
   }

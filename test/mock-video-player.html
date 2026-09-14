@@ -453,6 +453,18 @@
         <!-- Simulated Click-Trap Overlay -->
         <div class="ad-click-trap" id="sim-click-trap" style="display: none;" title="Ad Click Trap"></div>
       </div>
+
+      <!-- Simulated Thai Movie Site Banners (Normally present on movie sites) -->
+      <div class="header-ads" id="sim-thai-banner-1" style="margin-top: 10px; text-align: center;">
+        <a href="https://ufabet-vip-thailand.example/register" style="display: inline-block; padding: 10px; background: #b91c1c; color: #fff; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold;">
+          🎰 [UFABET] เว็บตรง สล็อต คาสิโน ฝาก-ถอน ออโต้ 24 ชม. (โฆษณาจำลอง)
+        </a>
+      </div>
+      <div class="ads-banner" id="sim-thai-banner-2" style="margin-top: 8px; text-align: center;">
+        <a href="https://slot1234-auto.example/bonus" style="display: inline-block; padding: 10px; background: #15803d; color: #fff; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold;">
+          💰 [SLOT AUTO] แจกเครดิตฟรี 100% ไม่ต้องแชร์ (โฆษณาจำลอง)
+        </a>
+      </div>
     </section>
 
     <!-- Simulation Trigger Controls -->
@@ -516,26 +528,33 @@
   <script src="../src/ui/mobile-hud.js"></script>
 
   <script>
-    // Initialize CleanVideo Engine on this test page
-    const RULES = {
-      global: {
-        skipKeywords: ['ข้ามโฆษณา', 'ข้าม', 'skip ad', 'skip'],
-        closeKeywords: ['close', 'dismiss', 'ปิด', 'ปิดโฆษณา', 'ปิดหน้าต่างนี้', '×', '✕'],
-        closeAriaLabels: ['close', 'dismiss', 'close advertisement'],
-        popupSelectors: ['.ad-popup', '.ad-popup-modal', '.video-ad-banner']
-      },
-      domains: {
-        'generic-streaming': {
-          skipSelectors: ['.skip-btn', '.ytp-skip-ad-button'],
-          closeSelectors: ['.close-btn', '.close-x']
-        }
-      }
-    };
+    // Initialize CleanVideo Engine on this test page with enhanced Thai rules
+    fetch('../src/config/rules.json')
+      .then(res => res.json())
+      .then(rules => {
+        initEngine(rules);
+      })
+      .catch(() => {
+        initEngine(null);
+      });
 
-    const engine = new CleanVideoEngine({ rules: RULES });
-    const hud = new CleanVideoMobileHUD(engine);
-    hud.mount();
-    engine.start();
+    function initEngine(rulesConfig) {
+      const defaultRules = {
+        global: {
+          skipKeywords: ['ข้ามโฆษณา', 'ข้าม', 'ข้ามใน', 'skip ad', 'skip', 'skip in'],
+          closeKeywords: ['close', 'dismiss', 'ปิด', 'ปิดโฆษณา', 'ปิดหน้าต่างนี้', '×', '✕'],
+          closeAriaLabels: ['close', 'dismiss', 'close advertisement'],
+          thaiAdHrefKeywords: ['ufa', 'slot', 'bet', 'casino', 'sagame', 'ruay', 'lotto', 'line.me/R'],
+          popupSelectors: ['.ad-popup', '.ad-popup-modal', '.video-ad-banner', '.header-ads', '.ads-banner'],
+          playerAdContainers: ['.jw-ad-container', '.fluid_ad_container', '[class*="ad-container"]']
+        }
+      };
+
+      const engine = new CleanVideoEngine({ rules: rulesConfig || defaultRules });
+      const hud = new CleanVideoMobileHUD(engine);
+      hud.mount();
+      engine.start();
+    }
 
     // Simulator Interactive Triggers
     const toast = document.getElementById('event-toast');
@@ -545,17 +564,35 @@
       setTimeout(() => { toast.style.display = 'none'; }, 2200);
     }
 
-    // 1. Trigger Skip Ad Button
+    // 1. Trigger 5-Second Countdown Ad Simulation
     document.getElementById('btn-trigger-skip').addEventListener('click', () => {
       const skipBox = document.getElementById('sim-skip-box');
+      const skipBtn = document.getElementById('sim-skip-btn');
       skipBox.style.display = 'block';
-      showToast('⚡ ปล่อยปุ่มข้ามโฆษณาแล้ว (CleanVideo จะตรวจจับและกดข้ามอัตโนมัติ)');
+      
+      // Simulate player showing a 5-second countdown
+      let count = 5;
+      skipBtn.querySelector('span:first-child').textContent = `ข้ามโฆษณาใน ${count} วิ... (Skip in ${count}s)`;
+      skipBtn.setAttribute('disabled', 'true');
+      
+      const timer = setInterval(() => {
+        count--;
+        if (count <= 0) {
+          clearInterval(timer);
+          skipBtn.removeAttribute('disabled');
+          skipBtn.querySelector('span:first-child').textContent = 'ข้ามโฆษณา (Skip Ad)';
+        } else {
+          skipBtn.querySelector('span:first-child').textContent = `ข้ามโฆษณาใน ${count} วิ... (Skip in ${count}s)`;
+        }
+      }, 1000);
+
+      showToast('⚡ เริ่มนับถอยหลัง 5 วิ (CleanVideo เร่งความเร็วและกดข้ามทันที)');
     });
 
     // When the skip button is clicked (either by CleanVideo or user)
     document.getElementById('sim-skip-btn').addEventListener('click', () => {
       document.getElementById('sim-skip-box').style.display = 'none';
-      showToast('✅ ข้ามโฆษณาสำเร็จ! วิดีโอเล่นต่อทันที');
+      showToast('✅ ข้ามโฆษณาสำเร็จ! ไม่ต้องรอ 5 วินาที');
     });
 
     // 2. Trigger Fullscreen Ad Popup

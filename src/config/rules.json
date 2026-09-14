@@ -1,26 +1,40 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "global": {
     "skipKeywords": [
       "ข้ามโฆษณา",
       "ข้าม",
+      "ข้ามใน",
       "skip ad",
       "skip advertisement",
       "skip ads",
       "skip intro",
       "skip",
-      "ข้ามตอน"
+      "ข้ามตอน",
+      "skip in"
+    ],
+    "countdownKeywords": [
+      "ข้ามใน",
+      "รออีก",
+      "วินาที",
+      "วิ",
+      "skip in",
+      "seconds",
+      "sec",
+      "skip ad in"
     ],
     "closeKeywords": [
       "close",
       "dismiss",
       "ปิด",
       "ปิดโฆษณา",
+      "ปิดหน้าต่างนี้",
       "ข้ามและปิด",
       "×",
       "✕",
       "✖",
-      "cancel"
+      "cancel",
+      "skip ad & close"
     ],
     "closeAriaLabels": [
       "close",
@@ -30,23 +44,103 @@
       "ปิด",
       "ปิดหน้าต่าง"
     ],
+    "thaiAdHrefKeywords": [
+      "ruay",
+      "ufa",
+      "slot",
+      "bet",
+      "casino",
+      "sagame",
+      "pgslot",
+      "gclub",
+      "ts911",
+      "sexygame",
+      "lotto",
+      "wmbet",
+      "hydra",
+      "baccarat",
+      "joker",
+      "ambbet",
+      "superslot",
+      "bk8",
+      "w88",
+      "dafabet",
+      "168",
+      "lin.ee",
+      "line.me/R",
+      "cutt.ly",
+      "bit.ly",
+      "lihi1",
+      "huc99",
+      "aka555",
+      "037uhd",
+      "agobet",
+      "zeed678",
+      "alpha88",
+      "juad888",
+      "icasino",
+      "wstar99",
+      "huaylike",
+      "texas789",
+      "ptgame88",
+      "panama888",
+      "london168",
+      "live222th",
+      "brazil999",
+      "ssgame",
+      "kingdom66",
+      "hotgraph88",
+      "newyork888",
+      "lockdown168",
+      "chokdee777",
+      "supermariobet"
+    ],
     "popupSelectors": [
       ".ad-popup",
       ".popup-ad",
       ".modal-ad",
       ".video-overlay-ad",
+      ".header-ads",
+      ".ads-images",
+      ".ads-banner",
+      ".img-banner-center-bottom",
+      ".bounce.animated.kosana",
+      "#flt-bn",
+      ".pd-bn",
       "[class*='ad-banner']",
       "[class*='overlay-ad']",
       "[id*='ad-popup']",
       "[id*='popup-ad']",
       ".interstitial-ad",
-      ".floating-ad"
+      ".floating-ad",
+      ".banner-floating",
+      "[id^='ads-']",
+      "[class^='ads-']",
+      ".sweet-alert",
+      ".swal2-container",
+      "[class*='floating-banner']",
+      "[id*='banner-bottom']",
+      "[class*='banner-sticky']"
     ],
     "overlaySelectors": [
       "[class*='click-protect']",
       "[class*='player-overlay-ad']",
       ".ad-click-trap",
-      ".video-mask-ad"
+      ".video-mask-ad",
+      "[class*='video-mask']",
+      "[id*='click-trap']"
+    ],
+    "playerAdContainers": [
+      ".jw-ad-container",
+      ".fluid_ad_container",
+      ".vjs-ima3-ad-container",
+      ".ima-ad-container",
+      "[class*='ad-container']",
+      "[class*='vast-container']",
+      "[id*='ad-player']",
+      "[class*='ad-player']",
+      ".video-ads",
+      ".ytp-ad-module"
     ]
   },
   "domains": {
@@ -73,12 +167,21 @@
       "skipSelectors": [
         "[class*='skip-btn']",
         "[id*='skip-ad']",
-        "[class*='skipAd']"
+        "[class*='skipAd']",
+        "[class*='skip-button']",
+        ".jw-skip",
+        ".jw-skip-icon",
+        ".fluid_ad_skip",
+        ".skipButton",
+        "[class*='btn-skip']"
       ],
       "closeSelectors": [
         "[class*='close-btn']",
         "[class*='btn-close']",
-        "[class*='close-ad']"
+        "[class*='close-ad']",
+        ".close",
+        ".close-x",
+        ".popup-close"
       ]
     }
   }
