@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CleanVideo — Mobile Safari Test Lab & Video Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 29, 47, 0.7);
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --accent: #10b981;
+      --danger: #ef4444;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --radius-lg: 20px;
+      --radius-md: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.12) 0px, transparent 50%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* Top Navigation */
+    header.navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      font-size: 22px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    .brand-name {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 40%, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-mobile {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+    }
+
+    /* Main Container */
+    main.container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* Info Banner */
+    .banner-note {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .banner-note strong {
+      color: #60a5fa;
+    }
+
+    /* Video Player Wrapper */
+    .video-section {
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border);
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .video-player {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #05070e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    video#main-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Simulated Ad Overlays on Video */
+    .video-ad-banner {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 50;
+      width: 85%;
+      max-width: 480px;
+      animation: popIn 0.3s ease;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translate(-50%, 15px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    .video-ad-banner .ad-text {
+      flex: 1;
+    }
+
+    .video-ad-banner .ad-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f87171;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .video-ad-banner .ad-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .video-ad-banner .close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* Transparent Click-trap Overlay */
+    .ad-click-trap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 40;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    /* Skip Ad Button Container */
+    .skip-ad-container {
+      position: absolute;
+      bottom: 24px;
+      right: 20px;
+      z-index: 60;
+    }
+
+    .ytp-skip-ad-button, .skip-btn {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      transition: all 0.2s ease;
+    }
+
+    .skip-btn:hover {
+      background: #2563eb;
+      border-color: #3b82f6;
+    }
+
+    /* Interactive Simulator Controls */
+    .control-panel {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .panel-card {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    button.sim-btn {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+    }
+
+    button.sim-btn:hover {
+      background: #334155;
+      border-color: var(--primary);
+    }
+
+    button.sim-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Ad Popup Modal (Simulated) */
+    .ad-popup-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      padding: 20px;
+    }
+
+    .ad-popup-modal.show {
+      display: flex;
+    }
+
+    .ad-modal-box {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 360px;
+      padding: 24px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      animation: popModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popModal {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .ad-modal-box .close-x {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #94a3b8;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .ad-modal-img {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #ef4444, #f59e0b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+
+    .ad-modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .ad-modal-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    /* Live Event Toast */
+    #event-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(16, 185, 129, 0.95);
+      backdrop-filter: blur(12px);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 100000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, 10px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+  </style>
+
+  <!-- Load CleanVideo directly for testing inside this lab page -->
+  <link rel="stylesheet" href="../src/ui/mobile-hud.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-name">CleanVideo Lab</div>
+    </div>
+    <div class="badge-mobile">Mobile Safari Verified</div>
+  </header>
+
+  <main class="container">
+    <div class="banner-note">
+      <div>
+        <strong>ทดสอบจำลองบน Mobile Safari:</strong> หน้าแล็บนี้จำลองโฆษณาวิดีโอ (Skip Ad, Popup กวนใจ, Transparent Click-Trap) เพื่อทดสอบการทำงานของ CleanVideo แบบเรียลไทม์
+      </div>
+    </div>
+
+    <!-- Video Player Simulation Area -->
+    <section class="video-section">
+      <div class="video-player" id="player-container">
+        <!-- Sample Canvas / Video element -->
+        <video id="main-video" poster="https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80" playsinline controls>
+          <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+          Your browser does not support HTML5 video.
+        </video>
+
+        <!-- Simulated Floating Ad Overlay inside Video -->
+        <div class="video-ad-banner" id="sim-ad-banner" style="display: none;">
+          <div class="ad-text">
+            <div class="ad-title"><span>🎰</span> โฆษณาสปอนเซอร์พิเศษ</div>
+            <div class="ad-sub">รับโบนัสฟรี 100% คลิกเลย!</div>
+          </div>
+          <button class="close-btn" id="sim-ad-close-btn">ปิดโฆษณา</button>
+        </div>
+
+        <!-- Simulated Skip Ad Button -->
+        <div class="skip-ad-container" id="sim-skip-box" style="display: none;">
+          <button class="ytp-skip-ad-button skip-btn" id="sim-skip-btn">
+            <span>ข้ามโฆษณา (Skip Ad)</span>
+            <span>⏩</span>
+          </button>
+        </div>
+
+        <!-- Simulated Click-Trap Overlay -->
+        <div class="ad-click-trap" id="sim-click-trap" style="display: none;" title="Ad Click Trap"></div>
+      </div>
+    </section>
+
+    <!-- Simulation Trigger Controls -->
+    <section class="control-panel">
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>⚡</span> จำลองโฆษณา (Trigger Ads)
+        </div>
+        <div class="btn-grid">
+          <button class="sim-btn" id="btn-trigger-skip">
+            <span>ปล่อยปุ่ม "ข้ามโฆษณา"</span>
+            <span>🎯</span>
+          </button>
+          <button class="sim-btn" id="btn-trigger-popup">
+            <span>เด้ง Modal Popup เต็มจอ</span>
+            <span>🪟</span>
+          </button>
+          <button class="sim-btn" id="btn-trigger-overlay">
+            <span>บังหน้าจอด้วย Click-Trap</span>
+            <span>🕸️</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">
+          <span>📱</span> วิธีติดตั้งบน Safari มือถือ (iOS)
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+          <p>1. โหลดแอปฟรี <strong>Userscripts</strong> หรือ <strong>Stay</strong> จาก iOS App Store</p>
+          <p>2. เปิด Safari &gt; ตั้งค่า Extensions &gt; เปิดใช้งาน</p>
+          <p>3. เพิ่มสคริปต์ <code>cleanvideo.user.js</code></p>
+          <p>4. เข้าเว็บดูวิดีโอ โฆษณาจะถูกข้ามและปิดให้อัตโนมัติทันที!</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Simulated Ad Popup Modal -->
+  <div class="ad-popup-modal ad-popup" id="sim-popup-modal">
+    <div class="ad-modal-box">
+      <button class="close-x close-btn" id="sim-modal-close" aria-label="Close">✕</button>
+      <div class="ad-modal-img">🎁</div>
+      <div class="ad-modal-title">ยินดีด้วย! คุณได้รับสิทธิ์พิเศษ</div>
+      <div class="ad-modal-desc">คลิกเพื่อรับของรางวัลทันที หรือกดปิดเพื่อรับชมวิดีโอต่อ</div>
+      <button class="close-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border-radius: 10px; cursor: pointer;">
+        ปิดหน้าต่างนี้
+      </button>
+    </div>
+  </div>
+
+  <div id="event-toast"></div>
+
+  <!-- Load CleanVideo Core Modules for Test Verification -->
+  <script src="../src/core/detector.js"></script>
+  <script src="../src/core/skip-handler.js"></script>
+  <script src="../src/core/popup-handler.js"></script>
+  <script src="../src/core/overlay-handler.js"></script>
+  <script src="../src/core/redirect-guard.js"></script>
+  <script src="../src/core/engine.js"></script>
+  <script src="../src/ui/mobile-hud.js"></script>
+
+  <script>
+    // Initialize CleanVideo Engine on this test page
+    const RULES = {
+      global: {
+        skipKeywords: ['ข้ามโฆษณา', 'ข้าม', 'skip ad', 'skip'],
+        closeKeywords: ['close', 'dismiss', 'ปิด', 'ปิดโฆษณา', 'ปิดหน้าต่างนี้', '×', '✕'],
+        closeAriaLabels: ['close', 'dismiss', 'close advertisement'],
+        popupSelectors: ['.ad-popup', '.ad-popup-modal', '.video-ad-banner']
+      },
+      domains: {
+        'generic-streaming': {
+          skipSelectors: ['.skip-btn', '.ytp-skip-ad-button'],
+          closeSelectors: ['.close-btn', '.close-x']
+        }
+      }
+    };
+
+    const engine = new CleanVideoEngine({ rules: RULES });
+    const hud = new CleanVideoMobileHUD(engine);
+    hud.mount();
+    engine.start();
+
+    // Simulator Interactive Triggers
+    const toast = document.getElementById('event-toast');
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2200);
+    }
+
+    // 1. Trigger Skip Ad Button
+    document.getElementById('btn-trigger-skip').addEventListener('click', () => {
+      const skipBox = document.getElementById('sim-skip-box');
+      skipBox.style.display = 'block';
+      showToast('⚡ ปล่อยปุ่มข้ามโฆษณาแล้ว (CleanVideo จะตรวจจับและกดข้ามอัตโนมัติ)');
+    });
+
+    // When the skip button is clicked (either by CleanVideo or user)
+    document.getElementById('sim-skip-btn').addEventListener('click', () => {
+      document.getElementById('sim-skip-box').style.display = 'none';
+      showToast('✅ ข้ามโฆษณาสำเร็จ! วิดีโอเล่นต่อทันที');
+    });
+
+    // 2. Trigger Fullscreen Ad Popup
+    document.getElementById('btn-trigger-popup').addEventListener('click', () => {
+      const modal = document.getElementById('sim-popup-modal');
+      modal.classList.add('show');
+      showToast('⚡ เด้ง Ad Popup แล้ว (CleanVideo จะหาปุ่มปิดหรือลบออกอัตโนมัติ)');
+    });
+
+    document.getElementById('sim-modal-close').addEventListener('click', () => {
+      document.getElementById('sim-popup-modal').classList.remove('show');
+    });
+
+    // 3. Trigger Click Trap Overlay
+    document.getElementById('btn-trigger-overlay').addEventListener('click', () => {
+      const banner = document.getElementById('sim-ad-banner');
+      banner.style.display = 'flex';
+      const trap = document.getElementById('sim-click-trap');
+      trap.style.display = 'block';
+      trap.onclick = () => {
+        window.open('https://adcash-fake-network.example/bet');
+      };
+      showToast('⚡ วาง Transparent Click-trap บนวิดีโอแล้ว');
+    });
+
+    document.getElementById('sim-ad-close-btn').addEventListener('click', () => {
+      document.getElementById('sim-ad-banner').style.display = 'none';
+      document.getElementById('sim-click-trap').style.display = 'none';
+    });
+  </script>
+</body>
+</html>

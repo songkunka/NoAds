@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CleanVideo</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="header">
+      <div class="logo">
+        <span class="icon">🛡️</span>
+        <span class="title">CleanVideo</span>
+      </div>
+      <span class="version">v1.0.0</span>
+    </header>
+
+    <div class="power-card">
+      <div class="power-info">
+        <span class="status-indicator active" id="status-dot"></span>
+        <span class="status-text" id="status-text">Protection Active</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="main-toggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <section class="stats-card">
+      <div class="stat-item">
+        <span class="stat-number" id="stat-skip">0</span>
+        <span class="stat-desc">Ads Skipped</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number" id="stat-popup">0</span>
+        <span class="stat-desc">Popups Closed</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number" id="stat-overlay">0</span>
+        <span class="stat-desc">Overlays Cleaned</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number" id="stat-redirect">0</span>
+        <span class="stat-desc">Redirects Blocked</span>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button class="btn btn-secondary" id="btn-site-toggle">
+        <span id="site-toggle-icon">🚫</span>
+        <span id="site-toggle-text">Disable on this site</span>
+      </button>
+    </div>
+
+    <footer class="footer">
+      <span>Ready for Mobile Safari & Desktop</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

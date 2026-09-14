@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "CleanVideo",
+  "version": "1.0.0",
+  "description": "Auto-skip video ads, auto-close popups, and remove overlays on Mobile Safari & Chrome",
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "CleanVideo"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["src/ui/mobile-hud.css"],
+      "js": [
+        "src/core/detector.js",
+        "src/core/skip-handler.js",
+        "src/core/popup-handler.js",
+        "src/core/overlay-handler.js",
+        "src/core/redirect-guard.js",
+        "src/core/engine.js",
+        "src/ui/mobile-hud.js",
+        "src/content/content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
