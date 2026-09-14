@@ -482,9 +482,13 @@
             <span>เด้ง Modal Popup เต็มจอ</span>
             <span>🪟</span>
           </button>
-          <button class="sim-btn" id="btn-trigger-overlay">
-            <span>บังหน้าจอด้วย Click-Trap</span>
-            <span>🕸️</span>
+          <button class="sim-btn" id="btn-trigger-fluid">
+            <span>จำลอง FluidPlayer VAST (รอ 5 วิ)</span>
+            <span>🎬</span>
+          </button>
+          <button class="sim-btn" id="btn-trigger-hijack">
+            <span>จำลอง Click Hijack (เว็บพนัน)</span>
+            <span>🚨</span>
           </button>
         </div>
       </div>
@@ -519,6 +523,8 @@
   <div id="event-toast"></div>
 
   <!-- Load CleanVideo Core Modules for Test Verification -->
+  <script src="../src/core/timer-override.js"></script>
+  <script src="../src/core/player-hook.js"></script>
   <script src="../src/core/detector.js"></script>
   <script src="../src/core/skip-handler.js"></script>
   <script src="../src/core/popup-handler.js"></script>
@@ -618,9 +624,62 @@
       showToast('⚡ วาง Transparent Click-trap บนวิดีโอแล้ว');
     });
 
-    document.getElementById('sim-ad-close-btn').addEventListener('click', () => {
-      document.getElementById('sim-ad-banner').style.display = 'none';
-      document.getElementById('sim-click-trap').style.display = 'none';
+    // 4. Trigger FluidPlayer VAST Simulation (5-second countdown with .fluid_ad_skip)
+    document.getElementById('btn-trigger-fluid').addEventListener('click', () => {
+      let fpContainer = document.getElementById('sim-fp-container');
+      if (!fpContainer) {
+        fpContainer = document.createElement('div');
+        fpContainer.id = 'sim-fp-container';
+        fpContainer.className = 'fluid_video_wrapper';
+        fpContainer.innerHTML = `
+          <div class="fluid_ad_container" style="position:absolute; inset:0; background:rgba(0,0,0,0.85); z-index:100; display:flex; align-items:center; justify-content:center; color:#fff;">
+            <div class="fluid_ad_text">📺 กำลังเล่น FluidPlayer VAST Ad...</div>
+            <div class="fluid_ad_skip skip_button" id="sim-fp-skip" style="position:absolute; bottom:20px; right:20px; background:#2563eb; color:#fff; padding:10px 18px; border-radius:8px; cursor:pointer;">
+              ข้ามโฆษณาใน 5 วิ...
+            </div>
+          </div>
+        `;
+        document.getElementById('player-container').appendChild(fpContainer);
+      } else {
+        fpContainer.style.display = 'block';
+      }
+
+      const fpSkip = document.getElementById('sim-fp-skip');
+      let fpCount = 5;
+      const fpTimer = setInterval(() => {
+        fpCount--;
+        if (fpCount <= 0) {
+          clearInterval(fpTimer);
+          fpSkip.textContent = 'ข้ามโฆษณา (Skip Ad)';
+        } else {
+          fpSkip.textContent = `ข้ามโฆษณาใน ${fpCount} วิ...`;
+        }
+      }, 1000);
+
+      fpSkip.onclick = () => {
+        clearInterval(fpTimer);
+        fpContainer.style.display = 'none';
+        showToast('✅ ข้าม FluidPlayer Pre-roll ทันที!');
+      };
+
+      showToast('🎬 เริ่มเล่น FluidPlayer VAST (CleanVideo จะเร่งเวลาและข้ามทันที)');
+    });
+
+    // 5. Trigger First-Click Hijack Simulation (Attempting to open gambling tab)
+    document.getElementById('btn-trigger-hijack').addEventListener('click', () => {
+      // Simulate synthetic anchor click targeting a gambling link
+      const fakeLink = document.createElement('a');
+      fakeLink.href = 'https://ruay-lotto-vip.example/register';
+      fakeLink.target = '_blank';
+      fakeLink.style.display = 'none';
+      document.body.appendChild(fakeLink);
+
+      showToast('🚨 เว็บพยายามเปิดแท็บพนัน (CleanVideo Layer-0 จะสกัดกั้นทันที)');
+      try {
+        fakeLink.click();
+      } finally {
+        fakeLink.remove();
+      }
     });
   </script>
 </body>

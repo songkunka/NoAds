@@ -1,6 +1,7 @@
 /**
- * CleanVideo Popup Handler
+ * CleanVideo Popup Handler (v2.0)
  * Auto-close popups, remove Thai gambling banners, and restore scrolling
+ * Incorporates extensive Thai ad filters from AdBlock-Thai-Filters
  */
 
 class CleanVideoPopupHandler {
@@ -10,7 +11,7 @@ class CleanVideoPopupHandler {
     this.onAction = onAction || (() => {});
     this.processedElements = new WeakSet();
     this.closeKeywords = (rules.global && rules.global.closeKeywords) || [
-      'close', 'dismiss', 'ปิด', 'ปิดโฆษณา', 'ปิดหน้าต่างนี้', '×', '✕', '✖', 'cancel'
+      'close', 'dismiss', 'ปิด', 'ปิดโฆษณา', 'ปิดหน้าต่างนี้', '×', '✕', '✖', 'cancel', 'ปิดป้ายนี้'
     ];
     this.closeAriaLabels = (rules.global && rules.global.closeAriaLabels) || [
       'close', 'dismiss', 'close advertisement', 'close dialog', 'ปิด', 'ปิดหน้าต่าง'
@@ -18,7 +19,14 @@ class CleanVideoPopupHandler {
     this.thaiAdHrefs = (rules.global && rules.global.thaiAdHrefKeywords) || [
       'ruay', 'ufa', 'slot', 'bet', 'casino', 'sagame', 'pgslot', 'gclub',
       'ts911', 'sexygame', 'lotto', 'wmbet', 'hydra', 'baccarat', 'joker',
-      'lin.ee', 'line.me/R', 'cutt.ly', 'bit.ly', 'lihi1'
+      'ambbet', 'superslot', 'bk8', 'w88', 'dafabet', '168', 'lin.ee',
+      'line.me/R', 'cutt.ly', 'bit.ly', 'lihi1', 'huc99', 'aka555', '037uhd',
+      'agobet', 'zeed678', 'alpha88', 'juad888', 'icasino', 'wstar99',
+      'huaylike', 'texas789', 'ptgame88', 'panama888', 'london168', 'live222th',
+      'brazil999', 'ssgame', 'kingdom66', 'hotgraph88', 'newyork888', 'lockdown168',
+      'chokdee777', 'supermariobet', '1688sagame', 'mahagame', '77lotto',
+      'slotgame', 'vip168sa', '1688sexygame', 'mc99bet', 'queenslot',
+      'winufa369', 'joker123', 'slotxo', 'bet2you', 'lotto432'
     ];
   }
 
@@ -26,10 +34,9 @@ class CleanVideoPopupHandler {
    * Find close button inside a popup container
    */
   findCloseButton(container) {
-    // 1. Check for standard close classes
     const classSelectors = [
       '.close', '.btn-close', '.close-btn', '.popup-close', '.close-x',
-      '[class*="close"]', '[id*="close"]', '[data-dismiss="modal"]'
+      '[class*="close"]', '[id*="close"]', '[data-dismiss="modal"]', '.banner-close'
     ];
     for (const sel of classSelectors) {
       try {
@@ -38,7 +45,6 @@ class CleanVideoPopupHandler {
       } catch (e) {}
     }
 
-    // 2. Scan buttons and clickable links inside container
     const candidates = container.querySelectorAll('button, a, span, div[role="button"]');
     for (const el of candidates) {
       if (!this.detector.isVisible(el)) continue;
@@ -70,7 +76,6 @@ class CleanVideoPopupHandler {
    * Clean Thai Gambling Banners & Links based on AdBlock-Thai-Filters
    */
   cleanThaiGamblingBanners() {
-    // Search for any anchor link pointing to gambling/betting domains
     const selector = this.thaiAdHrefs.map(kw => `a[href*="${kw}"]`).join(', ');
     try {
       const adLinks = document.querySelectorAll(selector);
@@ -78,8 +83,9 @@ class CleanVideoPopupHandler {
         if (this.processedElements.has(a)) continue;
         this.processedElements.add(a);
 
-        // Find the top-most ad container for this link
-        const bannerContainer = a.closest('div[class*="banner"], div[id*="banner"], center, .header-ads, .ads-images, .ads-banner, #flt-bn, .pd-bn, div[style*="fixed"], div[style*="sticky"]') || a.parentElement;
+        const bannerContainer = a.closest(
+          'div[class*="banner"], div[id*="banner"], center, .header-ads, .ads-images, .ads-banner, #flt-bn, #fixedban, #floating_banner_top, #divAdsBg, #modalads, #player_inzad, .center_lnwphp, .pd-bn, div[style*="fixed"], div[style*="sticky"]'
+        ) || a.parentElement;
 
         if (bannerContainer && bannerContainer !== document.body && bannerContainer !== document.documentElement) {
           bannerContainer.style.setProperty('display', 'none', 'important');
@@ -109,7 +115,9 @@ class CleanVideoPopupHandler {
     const selectors = (this.rules.global && this.rules.global.popupSelectors) || [
       '.ad-popup', '.popup-ad', '.modal-ad', '.video-overlay-ad',
       '.header-ads', '.ads-images', '.ads-banner', '.floating-ad',
-      '.sweet-alert', '.swal2-container', '[class*="floating-banner"]'
+      '.sweet-alert', '.swal2-container', '[class*="floating-banner"]',
+      '#player_inzad', '#flt-bn', '#fixedban', '#floating_banner_top',
+      '#divAdsBg', '#modalads', '.center_lnwphp'
     ];
 
     for (const sel of selectors) {
@@ -117,7 +125,7 @@ class CleanVideoPopupHandler {
         const popups = document.querySelectorAll(sel);
         for (const popup of popups) {
           if (this.processedElements.has(popup)) continue;
-          if (popup.id === 'cleanvideo-mobile-hud') continue;
+          if (popup.id === 'cleanvideo-mobile-hud' || popup.closest('#cleanvideo-mobile-hud')) continue;
 
           this.handlePopupElement(popup, 90, ['matched_popup_selector']);
         }
@@ -125,7 +133,9 @@ class CleanVideoPopupHandler {
     }
 
     // 3. Scan all fixed/absolute floating modals and overlays in DOM
-    const floatingElements = document.querySelectorAll('div[class*="popup"], div[id*="popup"], div[class*="modal"], div[id*="modal"], div[class*="overlay"], div[class*="dialog"]');
+    const floatingElements = document.querySelectorAll(
+      'div[class*="popup"], div[id*="popup"], div[class*="modal"], div[id*="modal"], div[class*="overlay"], div[class*="dialog"]'
+    );
     for (const el of floatingElements) {
       if (this.processedElements.has(el)) continue;
       if (el.id === 'cleanvideo-mobile-hud' || el.closest('#cleanvideo-mobile-hud')) continue;

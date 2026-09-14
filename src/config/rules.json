@@ -1,17 +1,19 @@
 {
-  "version": "1.1.0",
+  "version": "2.0.0",
   "global": {
     "skipKeywords": [
       "ข้ามโฆษณา",
       "ข้าม",
       "ข้ามใน",
+      "ข้ามตอน",
+      "ข้ามโฆษณาใน",
       "skip ad",
       "skip advertisement",
       "skip ads",
       "skip intro",
       "skip",
-      "ข้ามตอน",
-      "skip in"
+      "skip in",
+      "skip ad in"
     ],
     "countdownKeywords": [
       "ข้ามใน",
@@ -34,7 +36,8 @@
       "✕",
       "✖",
       "cancel",
-      "skip ad & close"
+      "skip ad & close",
+      "ปิดป้ายนี้"
     ],
     "closeAriaLabels": [
       "close",
@@ -45,55 +48,16 @@
       "ปิดหน้าต่าง"
     ],
     "thaiAdHrefKeywords": [
-      "ruay",
-      "ufa",
-      "slot",
-      "bet",
-      "casino",
-      "sagame",
-      "pgslot",
-      "gclub",
-      "ts911",
-      "sexygame",
-      "lotto",
-      "wmbet",
-      "hydra",
-      "baccarat",
-      "joker",
-      "ambbet",
-      "superslot",
-      "bk8",
-      "w88",
-      "dafabet",
-      "168",
-      "lin.ee",
-      "line.me/R",
-      "cutt.ly",
-      "bit.ly",
-      "lihi1",
-      "huc99",
-      "aka555",
-      "037uhd",
-      "agobet",
-      "zeed678",
-      "alpha88",
-      "juad888",
-      "icasino",
-      "wstar99",
-      "huaylike",
-      "texas789",
-      "ptgame88",
-      "panama888",
-      "london168",
-      "live222th",
-      "brazil999",
-      "ssgame",
-      "kingdom66",
-      "hotgraph88",
-      "newyork888",
-      "lockdown168",
-      "chokdee777",
-      "supermariobet"
+      "ruay", "ufa", "slot", "bet", "casino", "sagame", "pgslot", "gclub",
+      "ts911", "sexygame", "lotto", "wmbet", "hydra", "baccarat", "joker",
+      "ambbet", "superslot", "bk8", "w88", "dafabet", "168", "lin.ee",
+      "line.me/R", "cutt.ly", "bit.ly", "lihi1", "huc99", "aka555", "037uhd",
+      "agobet", "zeed678", "alpha88", "juad888", "icasino", "wstar99",
+      "huaylike", "texas789", "ptgame88", "panama888", "london168", "live222th",
+      "brazil999", "ssgame", "kingdom66", "hotgraph88", "newyork888", "lockdown168",
+      "chokdee777", "supermariobet", "1688sagame", "mahagame", "77lotto",
+      "slotgame", "vip168sa", "1688sexygame", "mc99bet", "queenslot",
+      "winufa369", "joker123", "slotxo", "bet2you", "lotto432"
     ],
     "popupSelectors": [
       ".ad-popup",
@@ -106,6 +70,12 @@
       ".img-banner-center-bottom",
       ".bounce.animated.kosana",
       "#flt-bn",
+      "#fixedban",
+      "#floating_banner_top",
+      "#divAdsBg",
+      "#modalads",
+      "#player_inzad",
+      ".center_lnwphp",
       ".pd-bn",
       "[class*='ad-banner']",
       "[class*='overlay-ad']",
@@ -120,7 +90,13 @@
       ".swal2-container",
       "[class*='floating-banner']",
       "[id*='banner-bottom']",
-      "[class*='banner-sticky']"
+      "[class*='banner-sticky']",
+      "#bottom_center_ads",
+      "#ads728x90top",
+      "#ads_showhide",
+      "#bt-ads",
+      "#link_h_movie_ad",
+      ".banner-close"
     ],
     "overlaySelectors": [
       "[class*='click-protect']",
@@ -128,11 +104,16 @@
       ".ad-click-trap",
       ".video-mask-ad",
       "[class*='video-mask']",
-      "[id*='click-trap']"
+      "[id*='click-trap']",
+      ".fluid_ad_cta",
+      ".fluid_ad_text",
+      ".fluid_ad_playing"
     ],
     "playerAdContainers": [
       ".jw-ad-container",
       ".fluid_ad_container",
+      ".fluid_ad_interstitial",
+      ".fluid_vpaid_slot",
       ".vjs-ima3-ad-container",
       ".ima-ad-container",
       "[class*='ad-container']",
@@ -140,7 +121,9 @@
       "[id*='ad-player']",
       "[class*='ad-player']",
       ".video-ads",
-      ".ytp-ad-module"
+      ".ytp-ad-module",
+      "#player_inzad",
+      ".ad_countdown"
     ]
   },
   "domains": {
@@ -165,13 +148,17 @@
     },
     "generic-streaming": {
       "skipSelectors": [
+        ".fluid_ad_skip",
+        ".fluid_ad_skip_button",
+        ".skip_button",
+        ".ad_countdown",
+        ".jw-skip",
+        ".jw-skip-icon",
+        ".video-ad-skip",
         "[class*='skip-btn']",
         "[id*='skip-ad']",
         "[class*='skipAd']",
         "[class*='skip-button']",
-        ".jw-skip",
-        ".jw-skip-icon",
-        ".fluid_ad_skip",
         ".skipButton",
         "[class*='btn-skip']"
       ],
@@ -181,7 +168,8 @@
         "[class*='close-ad']",
         ".close",
         ".close-x",
-        ".popup-close"
+        ".popup-close",
+        ".banner-close"
       ]
     }
   }

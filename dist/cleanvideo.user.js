@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CleanVideo for Mobile Safari
 // @namespace    https://github.com/cleanvideo
-// @version      1.1.0
-// @description  Auto-skip video ads without waiting 5 seconds, auto-close popups, remove Thai gambling banners, and block redirect traps on Mobile Safari (iOS) and Desktop
+// @version      2.0.0
+// @description  Auto-skip video ads without waiting 5 seconds, eliminate popups on play, remove Thai gambling banners, and hook FluidPlayer/JWPlayer on Mobile Safari (iOS) and Desktop
 // @author       CleanVideo Team
 // @match        *://*/*
 // @exclude      *://localhost*
@@ -19,16 +19,19 @@
   window.__CLEANVIDEO_INSTALLED__ = true;
 
   /* ==========================================================================
-     1. RULES CONFIGURATION (WITH THAI AD/GAMBLING FILTERS)
+     1. RULES CONFIGURATION (v2.0 WITH EXPANDED THAI AD/GAMBLING FILTERS)
      ========================================================================== */
   const RULES = {
-    version: "1.1.0",
+    version: "2.0.0",
     global: {
       skipKeywords: [
-        "ข้ามโฆษณา", "ข้าม", "ข้ามใน", "skip ad", "skip advertisement", "skip ads", "skip intro", "skip", "ข้ามตอน", "skip in"
+        "ข้ามโฆษณา", "ข้าม", "ข้ามใน", "ข้ามตอน", "ข้ามโฆษณาใน",
+        "skip ad", "skip advertisement", "skip ads", "skip intro",
+        "skip", "skip in", "skip ad in"
       ],
       closeKeywords: [
-        "close", "dismiss", "ปิด", "ปิดโฆษณา", "ปิดหน้าต่างนี้", "ข้ามและปิด", "×", "✕", "✖", "cancel"
+        "close", "dismiss", "ปิด", "ปิดโฆษณา", "ปิดหน้าต่างนี้", "ข้ามและปิด",
+        "×", "✕", "✖", "cancel", "skip ad & close", "ปิดป้ายนี้"
       ],
       closeAriaLabels: [
         "close", "dismiss", "close advertisement", "close dialog", "ปิด", "ปิดหน้าต่าง"
@@ -40,21 +43,29 @@
         "line.me/R", "cutt.ly", "bit.ly", "lihi1", "huc99", "aka555", "037uhd",
         "agobet", "zeed678", "alpha88", "juad888", "icasino", "wstar99",
         "huaylike", "texas789", "ptgame88", "panama888", "london168", "live222th",
-        "brazil999", "ssgame", "kingdom66", "hotgraph88", "newyork888", "lockdown168"
+        "brazil999", "ssgame", "kingdom66", "hotgraph88", "newyork888", "lockdown168",
+        "chokdee777", "supermariobet", "1688sagame", "mahagame", "77lotto",
+        "slotgame", "vip168sa", "1688sexygame", "mc99bet", "queenslot",
+        "winufa369", "joker123", "slotxo", "bet2you", "lotto432"
       ],
       popupSelectors: [
         ".ad-popup", ".popup-ad", ".modal-ad", ".video-overlay-ad",
         ".header-ads", ".ads-images", ".ads-banner", ".img-banner-center-bottom",
-        ".bounce.animated.kosana", "#flt-bn", ".pd-bn", "[class*='ad-banner']",
-        "[class*='overlay-ad']", "[id*='ad-popup']", "[id*='popup-ad']",
-        ".interstitial-ad", ".floating-ad", ".banner-floating", "[id^='ads-']",
-        "[class^='ads-']", ".sweet-alert", ".swal2-container", "[class*='floating-banner']",
-        "[id*='banner-bottom']", "[class*='banner-sticky']"
+        ".bounce.animated.kosana", "#flt-bn", "#fixedban", "#floating_banner_top",
+        "#divAdsBg", "#modalads", "#player_inzad", ".center_lnwphp", ".pd-bn",
+        "[class*='ad-banner']", "[class*='overlay-ad']", "[id*='ad-popup']",
+        "[id*='popup-ad']", ".interstitial-ad", ".floating-ad", ".banner-floating",
+        "[id^='ads-']", "[class^='ads-']", ".sweet-alert", ".swal2-container",
+        "[class*='floating-banner']", "[id*='banner-bottom']", "[class*='banner-sticky']",
+        "#bottom_center_ads", "#ads728x90top", "#ads_showhide", "#bt-ads",
+        "#link_h_movie_ad", ".banner-close"
       ],
       playerAdContainers: [
-        ".jw-ad-container", ".fluid_ad_container", ".vjs-ima3-ad-container",
-        ".ima-ad-container", "[class*='ad-container']", "[class*='vast-container']",
-        "[id*='ad-player']", "[class*='ad-player']", ".video-ads", ".ytp-ad-module"
+        ".jw-ad-container", ".fluid_ad_container", ".fluid_ad_interstitial",
+        ".fluid_vpaid_slot", ".vjs-ima3-ad-container", ".ima-ad-container",
+        "[class*='ad-container']", "[class*='vast-container']", "[id*='ad-player']",
+        "[class*='ad-player']", ".video-ads", ".ytp-ad-module", "#player_inzad",
+        ".ad_countdown"
       ]
     },
     domains: {
@@ -67,25 +78,19 @@
           ".ytp-ad-overlay-container", ".ytp-ad-message-container", ".ytp-ad-action-interstitial"
         ]
       },
-      "dailymotion.com": {
-        skipSelectors: [".dmp_AdSkipButton", "[class*='ad-skip']"]
-      },
       "generic-streaming": {
         skipSelectors: [
-          "[class*='skip-btn']", "[id*='skip-ad']", "[class*='skipAd']",
-          "[class*='skip-button']", ".jw-skip", ".jw-skip-icon", ".fluid_ad_skip",
+          ".fluid_ad_skip", ".fluid_ad_skip_button", ".skip_button", ".ad_countdown",
+          ".jw-skip", ".jw-skip-icon", ".video-ad-skip", "[class*='skip-btn']",
+          "[id*='skip-ad']", "[class*='skipAd']", "[class*='skip-button']",
           ".skipButton", "[class*='btn-skip']"
-        ],
-        closeSelectors: [
-          "[class*='close-btn']", "[class*='btn-close']", "[class*='close-ad']",
-          ".close", ".close-x", ".popup-close"
         ]
       }
     }
   };
 
   /* ==========================================================================
-     2. IMMEDIATE CSS BLOCKLIST INJECTION (Instant Ad & Banner Hiding)
+     2. IMMEDIATE CSS BLOCKLIST INJECTION (Instant Ad Hiding & Force-Show Skip)
      ========================================================================== */
   function injectFastBlocklist() {
     if (document.getElementById('cleanvideo-adblock-rules')) return;
@@ -94,16 +99,50 @@
     const containerRules = RULES.global.popupSelectors.join(',\n');
 
     const css = `
+      /* 1. Instant Thai Gambling Banner and Popup Neutralization */
       ${linkRules},
       ${containerRules},
       .ad-click-trap,
-      .video-mask-ad {
+      .video-mask-ad,
+      .fluid_ad_interstitial,
+      .fluid_ad_container,
+      .fluid_ad_text,
+      .fluid_ad_cta,
+      .fluid_ad_playing,
+      .fluid_vpaid_slot,
+      .jw-ad-container,
+      .jw-ad-overlay,
+      #player_inzad {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
         max-height: 0 !important;
         opacity: 0 !important;
         pointer-events: none !important;
+      }
+
+      /* 2. Force Show and Enable Skip Buttons Immediately (No Waiting 5s) */
+      .fluid_ad_skip,
+      .fluid_ad_skip_button,
+      .skip_button,
+      .ad_countdown,
+      .jw-skip,
+      .jw-skip-icon,
+      .video-ad-skip,
+      .ytp-skip-ad-button,
+      .ytp-ad-skip-button,
+      .ytp-ad-skip-button-modern,
+      [class*="skip-button"],
+      [class*="skip_button"],
+      [class*="skipAd"],
+      [class*="skip-btn"],
+      [id*="skip-ad"] {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        z-index: 2147483647 !important;
       }
     `;
 
@@ -117,112 +156,371 @@
   injectFastBlocklist();
 
   /* ==========================================================================
-     3. STYLES (MOBILE HUD)
+     3. TIMER OVERRIDE ENGINE (50x COUNTDOWN ACCELERATOR)
      ========================================================================== */
-  const HUD_CSS = `
-    #cleanvideo-mobile-hud {
-      --cv-bg: rgba(18, 20, 29, 0.90);
-      --cv-card: rgba(28, 32, 48, 0.80);
-      --cv-border: rgba(255, 255, 255, 0.14);
-      --cv-primary: #3b82f6;
-      --cv-success: #10b981;
-      --cv-text: #f8fafc;
-      --cv-text-muted: #94a3b8;
-      --cv-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  class CleanVideoTimerOverride {
+    constructor(speedFactor = 50) {
+      this.speedFactor = speedFactor;
+      this.installed = false;
+      this.originalSetTimeout = null;
+      this.originalSetInterval = null;
+    }
 
-      position: fixed;
-      z-index: 2147483647;
-      font-family: var(--cv-font);
-      box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-      font-size: 14px;
-      color: var(--cv-text);
-      line-height: 1.4;
-      pointer-events: auto;
-    }
-    #cleanvideo-mobile-hud * { box-sizing: border-box; margin: 0; padding: 0; }
-    .cv-pill-btn {
-      display: flex; align-items: center; gap: 6px;
-      background: var(--cv-bg);
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--cv-border);
-      padding: 7px 13px; border-radius: 9999px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-      cursor: pointer; touch-action: none;
-    }
-    .cv-indicator-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--cv-success); box-shadow: 0 0 8px var(--cv-success);
-    }
-    .cv-indicator-dot.disabled { background: #64748b; box-shadow: none; }
-    .cv-pill-label { font-weight: 600; font-size: 12px; color: #fff; }
-    .cv-badge-count {
-      background: #2563eb; color: #fff; font-size: 11px; font-weight: 700;
-      padding: 1px 6px; border-radius: 12px; min-width: 18px; text-align: center;
-    }
-    .cv-sheet-modal {
-      display: none; position: fixed; bottom: 20px; right: 20px;
-      width: 310px; max-width: calc(100vw - 32px);
-      background: var(--cv-bg);
-      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border: 1px solid var(--cv-border); border-radius: 20px;
-      padding: 16px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
-    }
-    .cv-sheet-modal.open { display: block; }
-    .cv-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .cv-title-box { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: #fff; }
-    .cv-close-modal-btn {
-      background: rgba(255, 255, 255, 0.1); border: none; color: var(--cv-text-muted);
-      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
-    }
-    .cv-power-card {
-      display: flex; align-items: center; justify-content: space-between;
-      background: var(--cv-card); padding: 10px 12px; border-radius: 12px;
-      margin-bottom: 12px; border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    .cv-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-    .cv-switch input { opacity: 0; width: 0; height: 0; }
-    .cv-slider {
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #475569; transition: .3s ease; border-radius: 34px;
-    }
-    .cv-slider:before {
-      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-      background-color: white; transition: .3s ease; border-radius: 50%;
-    }
-    input:checked + .cv-slider { background-color: var(--cv-success); }
-    input:checked + .cv-slider:before { transform: translateX(20px); }
-    .cv-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .cv-stat-box {
-      background: var(--cv-card); padding: 8px; border-radius: 10px;
-      text-align: center; border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    .cv-stat-val { font-size: 17px; font-weight: 700; color: #60a5fa; }
-    .cv-stat-label { font-size: 10px; color: var(--cv-text-muted); }
-    .cv-btn-action {
-      width: 100%; padding: 8px; background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.1); color: #fff;
-      border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;
-    }
-    .cv-debug-panel {
-      margin-top: 8px; background: rgba(0, 0, 0, 0.45); border-radius: 8px;
-      padding: 8px; max-height: 110px; overflow-y: auto; font-family: monospace;
-      font-size: 10px; color: #cbd5e1; display: none;
-    }
-    .cv-debug-panel.show { display: block; }
-  `;
+    install() {
+      if (this.installed || typeof window === 'undefined') return;
+      this.originalSetTimeout = window.setTimeout.bind(window);
+      this.originalSetInterval = window.setInterval.bind(window);
 
-  function injectHUDStyles() {
-    const styleEl = document.createElement('style');
-    styleEl.id = 'cleanvideo-hud-styles';
-    styleEl.textContent = HUD_CSS;
-    (document.head || document.documentElement).appendChild(styleEl);
+      const self = this;
+
+      window.setTimeout = function (handler, delay, ...args) {
+        let numDelay = typeof delay === 'number' ? delay : parseInt(delay, 10);
+        if (isNaN(numDelay)) numDelay = 0;
+
+        if (self.shouldAccelerate(handler, numDelay)) {
+          const acceleratedDelay = Math.max(10, Math.floor(numDelay / self.speedFactor));
+          return self.originalSetTimeout(handler, acceleratedDelay, ...args);
+        }
+        return self.originalSetTimeout(handler, numDelay, ...args);
+      };
+
+      window.setInterval = function (handler, delay, ...args) {
+        let numDelay = typeof delay === 'number' ? delay : parseInt(delay, 10);
+        if (isNaN(numDelay)) numDelay = 0;
+
+        if (self.shouldAccelerate(handler, numDelay)) {
+          const acceleratedDelay = Math.max(15, Math.floor(numDelay / self.speedFactor));
+          return self.originalSetInterval(handler, acceleratedDelay, ...args);
+        }
+        return self.originalSetInterval(handler, numDelay, ...args);
+      };
+
+      this.installed = true;
+    }
+
+    shouldAccelerate(handler, delay) {
+      if (delay < 150 || delay > 2500) return false;
+      if (typeof handler === 'function') {
+        try {
+          const fnStr = handler.toString();
+          if (/count|countdown|skip|timer|remain|tick|vast|preroll|ad_text|seconds|ข้าม/i.test(fnStr)) {
+            return true;
+          }
+        } catch (e) {}
+      } else if (typeof handler === 'string') {
+        if (/count|skip|timer|ad|vast/i.test(handler)) return true;
+      }
+
+      try {
+        if (document.querySelector('.fluid_ad_container, .jw-ad-container, .ad_countdown, .fluid_ad_skip, .skip_button, [class*="skip"]')) {
+          return true;
+        }
+      } catch (e) {}
+
+      return false;
+    }
   }
 
   /* ==========================================================================
-     4. DETECTOR MODULE
+     4. PLAYER API HOOK (FLUIDPLAYER, JWPLAYER, VIDEOJS)
+     ========================================================================== */
+  class CleanVideoPlayerHook {
+    constructor(onAction) {
+      this.onAction = onAction || (() => {});
+      this.installed = false;
+      this.fluidPlayerInstances = new Set();
+    }
+
+    install() {
+      if (this.installed || typeof window === 'undefined') return;
+      this.hookFluidPlayer();
+      this.hookJWPlayer();
+      this.hookVideoJS();
+      this.installed = true;
+    }
+
+    hookFluidPlayer() {
+      const self = this;
+      const wrapFP = (origFP) => {
+        if (typeof origFP !== 'function' || origFP.__cleanvideo_wrapped__) return origFP;
+        const wrapped = function (target, options = {}) {
+          try {
+            if (options && options.vastOptions) {
+              options.vastOptions.adList = [];
+              options.vastOptions.skipoffset = 0;
+              options.vastOptions.allowVPAID = false;
+              self.onAction({
+                type: 'neutralized_vast_config',
+                reason: 'Bypassed FluidPlayer VAST pre-roll ads at init',
+                timestamp: new Date().toLocaleTimeString()
+              });
+            }
+          } catch (e) {}
+
+          const instance = origFP.apply(this, arguments);
+          if (instance) {
+            self.fluidPlayerInstances.add(instance);
+            try {
+              if (typeof instance.playRoll === 'function') {
+                instance.playRoll = function () {
+                  if (typeof instance.onVastAdEnded === 'function') instance.onVastAdEnded();
+                };
+              }
+            } catch (e) {}
+          }
+          return instance;
+        };
+        wrapped.__cleanvideo_wrapped__ = true;
+        return wrapped;
+      };
+
+      if (window.fluidPlayer) {
+        window.fluidPlayer = wrapFP(window.fluidPlayer);
+      } else {
+        let _fp = undefined;
+        try {
+          Object.defineProperty(window, 'fluidPlayer', {
+            configurable: true,
+            enumerable: true,
+            get() { return _fp; },
+            set(val) { _fp = wrapFP(val); }
+          });
+        } catch (e) {}
+      }
+    }
+
+    hookJWPlayer() {
+      const self = this;
+      const wrapJW = (origJW) => {
+        if (typeof origJW !== 'function' || origJW.__cleanvideo_wrapped__) return origJW;
+        const wrapped = function () {
+          const player = origJW.apply(this, arguments);
+          if (player && typeof player.setup === 'function' && !player.setup.__cleanvideo_wrapped__) {
+            const origSetup = player.setup;
+            player.setup = function (config = {}) {
+              if (config && config.advertising) {
+                delete config.advertising;
+                self.onAction({
+                  type: 'neutralized_jw_ads',
+                  reason: 'Removed JWPlayer advertising configuration',
+                  timestamp: new Date().toLocaleTimeString()
+                });
+              }
+              const instance = origSetup.call(this, config);
+              try {
+                if (instance && typeof instance.on === 'function') {
+                  instance.on('adPlay', () => {
+                    if (typeof instance.skipAd === 'function') instance.skipAd();
+                  });
+                }
+              } catch (e) {}
+              return instance;
+            };
+            player.setup.__cleanvideo_wrapped__ = true;
+          }
+          return player;
+        };
+        wrapped.__cleanvideo_wrapped__ = true;
+        return wrapped;
+      };
+
+      if (window.jwplayer) {
+        window.jwplayer = wrapJW(window.jwplayer);
+      } else {
+        let _jw = undefined;
+        try {
+          Object.defineProperty(window, 'jwplayer', {
+            configurable: true,
+            enumerable: true,
+            get() { return _jw; },
+            set(val) { _jw = wrapJW(val); }
+          });
+        } catch (e) {}
+      }
+    }
+
+    hookVideoJS() {
+      const wrapVJS = (origVJS) => {
+        if (typeof origVJS !== 'function' || origVJS.__cleanvideo_wrapped__) return origVJS;
+        const wrapped = function (id, options = {}) {
+          if (options && options.plugins) {
+            delete options.plugins.ima;
+            delete options.plugins.vast;
+          }
+          return origVJS.apply(this, arguments);
+        };
+        wrapped.__cleanvideo_wrapped__ = true;
+        return wrapped;
+      };
+
+      if (window.videojs) {
+        window.videojs = wrapVJS(window.videojs);
+      } else {
+        let _vjs = undefined;
+        try {
+          Object.defineProperty(window, 'videojs', {
+            configurable: true,
+            enumerable: true,
+            get() { return _vjs; },
+            set(val) { _vjs = wrapVJS(val); }
+          });
+        } catch (e) {}
+      }
+    }
+
+    forceSkipActivePlayers() {
+      for (const fp of this.fluidPlayerInstances) {
+        try {
+          if (fp.isCurrentlyPlayingAd) {
+            if (typeof fp.onVastAdEnded === 'function') fp.onVastAdEnded();
+            else if (typeof fp.switchToMainVideo === 'function') fp.switchToMainVideo();
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  /* ==========================================================================
+     5. LAYER-0 REDIRECT GUARD & ANTI-CLICKJACKING
+     ========================================================================== */
+  class CleanVideoRedirectGuard {
+    constructor(onAction) {
+      this.onAction = onAction || (() => {});
+      this.originalWindowOpen = null;
+      this.originalAnchorClick = null;
+      this.installed = false;
+      this.adKeywords = RULES.global.thaiAdHrefKeywords.concat([
+        'popads', 'adcash', 'track', 'click.', 'doubleclick', 'syndication',
+        'exoclick', 'trafficjunky', 'propellerads'
+      ]);
+      this.onCaptureEvent = this.handleCaptureEvent.bind(this);
+    }
+
+    isAdUrl(url) {
+      if (!url) return false;
+      const urlStr = url.toString().toLowerCase();
+      return this.adKeywords.some(kw => urlStr.includes(kw));
+    }
+
+    install() {
+      if (this.installed || typeof window === 'undefined') return;
+      const self = this;
+
+      // 1. Hook window.open safely with mock location
+      this.originalWindowOpen = window.open;
+      window.open = function (url, target, features) {
+        const urlStr = (url || '').toString();
+        const isSuspicious = !urlStr || urlStr === 'about:blank' || self.isAdUrl(urlStr);
+
+        if (isSuspicious) {
+          self.onAction({
+            type: 'blocked_redirect',
+            reason: `Blocked popup tab (${urlStr || 'empty/about:blank'})`,
+            timestamp: new Date().toLocaleTimeString()
+          });
+
+          return {
+            closed: false,
+            close: () => {},
+            focus: () => {},
+            blur: () => {},
+            postMessage: () => {},
+            location: {
+              replace: () => {},
+              assign: () => {},
+              set href(val) { console.log('[CleanVideo] Blocked popup redirect:', val); },
+              get href() { return 'about:blank'; }
+            }
+          };
+        }
+        return self.originalWindowOpen.call(window, url, target, features);
+      };
+
+      // 2. Hook HTMLAnchorElement.prototype.click
+      if (typeof HTMLAnchorElement !== 'undefined' && HTMLAnchorElement.prototype) {
+        this.originalAnchorClick = HTMLAnchorElement.prototype.click;
+        HTMLAnchorElement.prototype.click = function () {
+          const href = (this.href || this.getAttribute('href') || '').toLowerCase();
+          if (self.isAdUrl(href)) {
+            self.onAction({
+              type: 'blocked_redirect',
+              reason: `Blocked synthetic anchor click (${href.slice(0, 45)}...)`,
+              timestamp: new Date().toLocaleTimeString()
+            });
+            return;
+          }
+          return self.originalAnchorClick.apply(this, arguments);
+        };
+      }
+
+      // 3. Document-level Capture Phase Listener
+      document.addEventListener('click', this.onCaptureEvent, true);
+      document.addEventListener('touchend', this.onCaptureEvent, true);
+
+      this.installed = true;
+    }
+
+    handleCaptureEvent(e) {
+      const target = e.target;
+      if (!target || !(target instanceof HTMLElement)) return;
+      if (target.closest('#cleanvideo-mobile-hud')) return;
+
+      const anchor = target.closest('a');
+      if (anchor) {
+        const href = (anchor.getAttribute('href') || '').toLowerCase();
+        if (this.isAdUrl(href)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          anchor.style.setProperty('display', 'none', 'important');
+          this.onAction({
+            type: 'blocked_redirect',
+            reason: `Blocked click on gambling link (${href.slice(0, 40)}...)`,
+            timestamp: new Date().toLocaleTimeString()
+          });
+          return;
+        }
+      }
+
+      const isOverlayTrap = (
+        target.classList.contains('ad-click-trap') ||
+        target.classList.contains('video-mask-ad') ||
+        target.hasAttribute('data-cleanvideo-neutralized') ||
+        /trap|overlay-ad|click-protect/i.test(`${target.className} ${target.id}`)
+      );
+
+      if (isOverlayTrap) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        target.style.setProperty('display', 'none', 'important');
+        target.style.setProperty('pointer-events', 'none', 'important');
+
+        const video = document.querySelector('video');
+        if (video && video.paused) {
+          try { video.play(); } catch (err) {}
+        }
+
+        this.onAction({
+          type: 'neutralized_video_overlay',
+          reason: 'Intercepted transparent click-trap on video player',
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+    }
+
+    uninstall() {
+      if (!this.installed) return;
+      if (this.originalWindowOpen) window.open = this.originalWindowOpen;
+      if (this.originalAnchorClick && typeof HTMLAnchorElement !== 'undefined') {
+        HTMLAnchorElement.prototype.click = this.originalAnchorClick;
+      }
+      document.removeEventListener('click', this.onCaptureEvent, true);
+      document.removeEventListener('touchend', this.onCaptureEvent, true);
+      this.installed = false;
+    }
+  }
+
+  /* ==========================================================================
+     6. DETECTOR MODULE
      ========================================================================== */
   class CleanVideoDetector {
     constructor(rules) {
@@ -282,7 +580,7 @@
           return true;
         }
         const skipOrCountdown = player.querySelector('[class*="skip"], [class*="countdown"], [id*="skip"]');
-        if (skipOrCountdown && this.isVisible(skipOrCountdown)) return true;
+        if (skipOrCountdown) return true;
       }
 
       const src = (vid.currentSrc || vid.src || '').toLowerCase();
@@ -300,10 +598,8 @@
       let score = 0;
       const reasons = [];
       const style = window.getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
       const classAndId = `${el.className || ''} ${el.id || ''}`.toLowerCase();
 
-      // Thai Gambling Link Check
       const links = el.tagName === 'A' ? [el] : el.querySelectorAll('a');
       for (const a of links) {
         const href = (a.getAttribute('href') || '').toLowerCase();
@@ -338,40 +634,41 @@
         score += 25; reasons.push('overlays_video_player');
       }
 
-      const hasIframe = el.querySelector('iframe') !== null || el.tagName === 'IFRAME';
-      if (hasIframe) {
-        score += 20; reasons.push('contains_iframe');
-      }
-
       return { score, reasons };
     }
   }
 
   /* ==========================================================================
-     5. SKIP HANDLER (WITH 16X SPEED AD ACCELERATOR & INSTANT SEEK)
+     7. SKIP HANDLER (v2.0 WITH ENDED DISPATCH & FORCE VISIBILITY)
      ========================================================================== */
   class CleanVideoSkipHandler {
-    constructor(detector, rules, onAction) {
+    constructor(detector, rules, onAction, playerHook) {
       this.detector = detector;
       this.rules = rules || {};
       this.onAction = onAction || (() => {});
+      this.playerHook = playerHook || null;
       this.clickedElements = new WeakSet();
       this.lastSkipTime = 0;
-      this.minInterval = 400;
+      this.minInterval = 250;
     }
 
     simulateSafeClick(el) {
       if (!el) return false;
       try {
         el.removeAttribute('disabled');
+        el.classList.remove('disabled', 'fluid_disabled');
+        el.style.setProperty('display', 'block', 'important');
+        el.style.setProperty('opacity', '1', 'important');
+        el.style.setProperty('visibility', 'visible', 'important');
         el.style.setProperty('pointer-events', 'auto', 'important');
+        el.style.setProperty('cursor', 'pointer', 'important');
 
         const rect = el.getBoundingClientRect();
         const clientX = rect.left + rect.width / 2;
         const clientY = rect.top + rect.height / 2;
 
         try {
-          const touchObj = new Touch({ identifier: Date.now(), target: el, clientX, clientY });
+          const touchObj = new Touch({ identifier: Date.now(), target: el, clientX: clientX || 100, clientY: clientY || 100 });
           el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [touchObj] }));
           el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [touchObj] }));
         } catch (e) {}
@@ -385,23 +682,23 @@
       }
     }
 
-    /**
-     * Fast-forward or instant-seek ad video to bypass the 5-second countdown
-     */
     accelerateAdVideo() {
       const videos = document.querySelectorAll('video');
       for (const vid of videos) {
         if (this.detector.isVideoPlayingAd(vid)) {
           try {
             vid.muted = true;
-            if (vid.playbackRate < 16.0) {
-              vid.playbackRate = 16.0;
-            }
+            if (vid.playbackRate < 16.0) vid.playbackRate = 16.0;
             if (Number.isFinite(vid.duration) && vid.duration > 0 && vid.currentTime < vid.duration - 0.1) {
-              vid.currentTime = vid.duration - 0.05;
+              vid.currentTime = vid.duration - 0.02;
             }
+            vid.dispatchEvent(new Event('ended'));
           } catch (e) {}
         }
+      }
+
+      if (this.playerHook && typeof this.playerHook.forceSkipActivePlayers === 'function') {
+        this.playerHook.forceSkipActivePlayers();
       }
 
       try {
@@ -421,29 +718,31 @@
       const now = Date.now();
       if (now - this.lastSkipTime < this.minInterval) return false;
 
-      const host = window.location.hostname;
-      for (const [domain, config] of Object.entries(this.rules.domains || {})) {
-        if (host.includes(domain) || domain === 'generic-streaming') {
-          if (config.skipSelectors) {
-            for (const selector of config.skipSelectors) {
-              const targets = document.querySelectorAll(selector);
-              for (const target of targets) {
-                if (this.detector.isVisible(target) && !this.clickedElements.has(target)) {
-                  this.executeSkip(target, `site_rule (${domain})`);
-                  return true;
-                }
-              }
-            }
+      const targetedSelectors = [
+        '.fluid_ad_skip', '.fluid_ad_skip_button', '.skip_button', '.ad_countdown',
+        '.jw-skip', '.jw-skip-icon', '.video-ad-skip', '.ytp-skip-ad-button',
+        '.ytp-ad-skip-button', '.ytp-ad-skip-button-modern', '.ytp-ad-skip-button-slot button',
+        '[class*="skip_button"]', '[class*="skip-button"]', '[class*="skipAd"]',
+        '[class*="skip-btn"]', '[id*="skip-ad"]', '[id*="skip_ad"]'
+      ];
+
+      for (const sel of targetedSelectors) {
+        const elements = document.querySelectorAll(sel);
+        for (const el of elements) {
+          if (!this.clickedElements.has(el)) {
+            this.executeSkip(el, `targeted_selector (${sel})`);
+            return true;
           }
         }
       }
 
-      const candidates = document.querySelectorAll('button, a, [role="button"], div[class*="skip"], span[class*="skip"], div[class*="countdown"]');
+      const candidates = document.querySelectorAll(
+        'button, a, [role="button"], div[class*="skip"], span[class*="skip"], div[class*="countdown"], span[class*="countdown"]'
+      );
       const skipKeywords = this.rules.global.skipKeywords || ['ข้ามโฆษณา', 'ข้าม', 'skip ad', 'skip'];
 
       for (const el of candidates) {
         if (this.clickedElements.has(el)) continue;
-        if (!this.detector.isVisible(el)) continue;
 
         const text = this.detector.getNormalizedText(el);
         const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
@@ -452,7 +751,7 @@
 
         if (matchesKeyword || hasSkipClass) {
           const isNearVideo = this.detector.isOverVideo(el) || el.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper');
-          if (isNearVideo || hasSkipClass || text.length <= 25) {
+          if (isNearVideo || hasSkipClass || text.length <= 30) {
             this.executeSkip(el, `auto_skip ("${text || ariaLabel || el.className}")`);
             return true;
           }
@@ -478,7 +777,80 @@
   }
 
   /* ==========================================================================
-     6. POPUP & THAI BANNER HANDLER
+     8. OVERLAY HANDLER
+     ========================================================================== */
+  class CleanVideoOverlayHandler {
+    constructor(detector, rules, onAction) {
+      this.detector = detector;
+      this.rules = rules || {};
+      this.onAction = onAction || (() => {});
+      this.handledOverlays = new WeakSet();
+    }
+
+    scanAndClean() {
+      const specificAdOverlays = document.querySelectorAll(
+        '.fluid_ad_interstitial, .fluid_ad_container, .fluid_ad_text, .fluid_ad_cta, .fluid_ad_playing, .fluid_vpaid_slot, .jw-ad-container, .ad_countdown'
+      );
+      for (const el of specificAdOverlays) {
+        if (this.handledOverlays.has(el)) continue;
+        if (el.classList.contains('fluid_ad_skip') || el.classList.contains('skip_button')) continue;
+
+        this.handledOverlays.add(el);
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('pointer-events', 'none', 'important');
+        this.onAction({
+          type: 'neutralized_video_overlay',
+          reason: `Cleaned player ad overlay (${el.className})`,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+
+      const videos = document.querySelectorAll('video');
+      for (const video of videos) {
+        const vRect = video.getBoundingClientRect();
+        if (vRect.width === 0 || vRect.height === 0) continue;
+        const playerParent = video.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper') || video.parentElement;
+        if (!playerParent) continue;
+
+        const potentialOverlays = playerParent.querySelectorAll('div, a, span');
+        for (const el of potentialOverlays) {
+          if (this.handledOverlays.has(el) || el === video || el.contains(video)) continue;
+          if (/control|progress|timeline/i.test(`${el.className} ${el.id}`)) continue;
+          if (/skip/i.test(`${el.className} ${el.id}`)) continue;
+
+          const rect = el.getBoundingClientRect();
+          const style = window.getComputedStyle(el);
+          const zIndex = parseInt(style.zIndex, 10);
+
+          const isCoveringVideo = (
+            rect.width >= vRect.width * 0.5 &&
+            rect.height >= vRect.height * 0.5 &&
+            (style.position === 'absolute' || style.position === 'fixed')
+          );
+
+          if (isCoveringVideo) {
+            const isTransparent = parseFloat(style.opacity) < 0.2 || style.backgroundColor === 'transparent';
+            const hasAdAttr = /ad|banner|click|trap|protect|mask/i.test(`${el.className} ${el.id}`);
+
+            if (hasAdAttr || (isTransparent && zIndex > 5)) {
+              this.handledOverlays.add(el);
+              el.style.setProperty('pointer-events', 'none', 'important');
+              el.style.setProperty('display', 'none', 'important');
+              el.setAttribute('data-cleanvideo-neutralized', 'true');
+              this.onAction({
+                type: 'neutralized_video_overlay',
+                reason: `Neutralized video click-trap (z-index: ${zIndex})`,
+                timestamp: new Date().toLocaleTimeString()
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* ==========================================================================
+     9. POPUP HANDLER
      ========================================================================== */
   class CleanVideoPopupHandler {
     constructor(detector, rules, onAction) {
@@ -494,7 +866,7 @@
     findCloseButton(container) {
       const classSelectors = [
         '.close', '.btn-close', '.close-btn', '.popup-close', '.close-x',
-        '[class*="close"]', '[id*="close"]', '[data-dismiss="modal"]'
+        '[class*="close"]', '[id*="close"]', '[data-dismiss="modal"]', '.banner-close'
       ];
       for (const sel of classSelectors) {
         try {
@@ -527,7 +899,10 @@
           if (this.processedElements.has(a)) continue;
           this.processedElements.add(a);
 
-          const banner = a.closest('div[class*="banner"], div[id*="banner"], center, .header-ads, .ads-images, .ads-banner, #flt-bn, .pd-bn, div[style*="fixed"], div[style*="sticky"]') || a.parentElement;
+          const banner = a.closest(
+            'div[class*="banner"], div[id*="banner"], center, .header-ads, .ads-images, .ads-banner, #flt-bn, #fixedban, #floating_banner_top, #divAdsBg, #modalads, #player_inzad, .center_lnwphp, .pd-bn, div[style*="fixed"], div[style*="sticky"]'
+          ) || a.parentElement;
+
           if (banner && banner !== document.body && banner !== document.documentElement) {
             banner.style.setProperty('display', 'none', 'important');
           } else {
@@ -551,13 +926,15 @@
         try {
           const popups = document.querySelectorAll(sel);
           for (const popup of popups) {
-            if (this.processedElements.has(popup) || popup.id === 'cleanvideo-mobile-hud') continue;
+            if (this.processedElements.has(popup) || popup.id === 'cleanvideo-mobile-hud' || popup.closest('#cleanvideo-mobile-hud')) continue;
             this.handlePopupElement(popup, 90, ['matched_popup_selector']);
           }
         } catch (e) {}
       }
 
-      const floatingElements = document.querySelectorAll('div[class*="popup"], div[id*="popup"], div[class*="modal"], div[id*="modal"], div[class*="overlay"], div[class*="dialog"]');
+      const floatingElements = document.querySelectorAll(
+        'div[class*="popup"], div[id*="popup"], div[class*="modal"], div[id*="modal"], div[class*="overlay"], div[class*="dialog"]'
+      );
       for (const el of floatingElements) {
         if (this.processedElements.has(el) || el.id === 'cleanvideo-mobile-hud' || el.closest('#cleanvideo-mobile-hud')) continue;
         const { score, reasons } = this.detector.scoreElement(el);
@@ -596,94 +973,7 @@
   }
 
   /* ==========================================================================
-     7. OVERLAY HANDLER & REDIRECT GUARD
-     ========================================================================== */
-  class CleanVideoOverlayHandler {
-    constructor(detector, rules, onAction) {
-      this.detector = detector;
-      this.rules = rules || {};
-      this.onAction = onAction || (() => {});
-      this.handledOverlays = new WeakSet();
-    }
-
-    scanAndClean() {
-      const videos = document.querySelectorAll('video');
-      for (const video of videos) {
-        const vRect = video.getBoundingClientRect();
-        if (vRect.width === 0 || vRect.height === 0) continue;
-        const playerParent = video.closest('.video-player, .player-container, #player, .jwplayer, .fluid_video_wrapper') || video.parentElement;
-        if (!playerParent) continue;
-
-        const potentialOverlays = playerParent.querySelectorAll('div, a');
-        for (const el of potentialOverlays) {
-          if (this.handledOverlays.has(el) || el === video || el.contains(video)) continue;
-          if (/control|progress|timeline/i.test(`${el.className} ${el.id}`)) continue;
-
-          const rect = el.getBoundingClientRect();
-          const style = window.getComputedStyle(el);
-          const zIndex = parseInt(style.zIndex, 10);
-
-          const isCoveringVideo = (
-            rect.width >= vRect.width * 0.6 &&
-            rect.height >= vRect.height * 0.6 &&
-            (style.position === 'absolute' || style.position === 'fixed')
-          );
-
-          if (isCoveringVideo) {
-            const isTransparent = parseFloat(style.opacity) < 0.2 || style.backgroundColor === 'transparent';
-            if (isTransparent && zIndex > 10) {
-              this.handledOverlays.add(el);
-              el.style.setProperty('pointer-events', 'none', 'important');
-              this.onAction({
-                type: 'neutralized_video_overlay',
-                reason: 'Neutralized transparent video click-trap',
-                timestamp: new Date().toLocaleTimeString()
-              });
-            }
-          }
-        }
-      }
-    }
-  }
-
-  class CleanVideoRedirectGuard {
-    constructor(onAction) {
-      this.onAction = onAction || (() => {});
-      this.originalWindowOpen = null;
-      this.installed = false;
-    }
-
-    install() {
-      if (this.installed || typeof window === 'undefined') return;
-      this.originalWindowOpen = window.open;
-      const self = this;
-
-      window.open = function (url, target, features) {
-        const urlStr = (url || '').toString();
-        const isAd = /popads|adcash|bet\d+|casino|slot|click\.|syndication|ufa|ruay|line\.me/i.test(urlStr);
-        if (isAd || !urlStr) {
-          self.onAction({
-            type: 'blocked_redirect',
-            reason: `Blocked popup tab (${urlStr || 'empty tab'})`,
-            timestamp: new Date().toLocaleTimeString()
-          });
-          return { closed: false, close: () => {}, focus: () => {} };
-        }
-        return self.originalWindowOpen.call(window, url, target, features);
-      };
-      this.installed = true;
-    }
-
-    uninstall() {
-      if (this.installed && this.originalWindowOpen) {
-        window.open = this.originalWindowOpen;
-        this.installed = false;
-      }
-    }
-  }
-
-  /* ==========================================================================
-     8. CENTRAL ENGINE
+     10. CENTRAL ENGINE
      ========================================================================== */
   class CleanVideoEngine {
     constructor(rules) {
@@ -692,8 +982,11 @@
       this.state = this.loadState();
       this.stats = { popupsClosed: 0, adsSkipped: 0, overlaysRemoved: 0, redirectsBlocked: 0 };
 
+      this.timerOverride = new CleanVideoTimerOverride(50);
+      this.playerHook = new CleanVideoPlayerHook(this.handleAction.bind(this));
+
       this.detector = new CleanVideoDetector(this.rules);
-      this.skipHandler = new CleanVideoSkipHandler(this.detector, this.rules, this.handleAction.bind(this));
+      this.skipHandler = new CleanVideoSkipHandler(this.detector, this.rules, this.handleAction.bind(this), this.playerHook);
       this.popupHandler = new CleanVideoPopupHandler(this.detector, this.rules, this.handleAction.bind(this));
       this.overlayHandler = new CleanVideoOverlayHandler(this.detector, this.rules, this.handleAction.bind(this));
       this.redirectGuard = new CleanVideoRedirectGuard(this.handleAction.bind(this));
@@ -723,7 +1016,7 @@
       if (!this.state.enabled || this.isWhitelisted()) return;
       if (action.type === 'closed_popup_button' || action.type === 'removed_popup_overlay' || action.type === 'removed_thai_ad_banner') {
         this.stats.popupsClosed++;
-      } else if (action.type === 'skip_ad') {
+      } else if (action.type === 'skip_ad' || action.type === 'neutralized_vast_config' || action.type === 'neutralized_jw_ads') {
         this.stats.adsSkipped++;
       } else if (action.type === 'neutralized_video_overlay') {
         this.stats.overlaysRemoved++;
@@ -736,6 +1029,9 @@
 
     start() {
       if (!this.state.enabled || this.isWhitelisted()) return;
+
+      this.timerOverride.install();
+      this.playerHook.install();
       this.redirectGuard.install();
       this.runCycle();
 
@@ -745,13 +1041,13 @@
         this.observer.observe(target, { childList: true, subtree: true });
       }
 
-      // Fast-interval polling for video playback and ad skipping
+      // Fast-interval polling for video playback and ad skipping (every 350ms)
       setInterval(() => {
         if (this.state.enabled) {
           this.skipHandler.accelerateAdVideo();
           this.runCycle();
         }
-      }, 500);
+      }, 350);
 
       this.setupVideoListeners();
     }
@@ -779,7 +1075,7 @@
         });
       };
       bindVideos();
-      setInterval(bindVideos, 2000);
+      setInterval(bindVideos, 1500);
     }
 
     requestScan() {
@@ -789,7 +1085,7 @@
         setTimeout(() => {
           this.runCycle();
           this.scanPending = false;
-        }, 50);
+        }, 40);
       });
     }
 
@@ -803,8 +1099,11 @@
     toggleEnabled() {
       this.state.enabled = !this.state.enabled;
       this.saveState();
-      if (!this.state.enabled) this.redirectGuard.uninstall();
-      else this.start();
+      if (!this.state.enabled) {
+        this.redirectGuard.uninstall();
+      } else {
+        this.start();
+      }
       return this.state.enabled;
     }
 
@@ -819,8 +1118,111 @@
   }
 
   /* ==========================================================================
-     9. MOBILE HUD CONTROLLER
+     11. MOBILE HUD CONTROLLER (APPLE GLASSMORPHISM AESTHETICS)
      ========================================================================== */
+  const HUD_CSS = `
+    #cleanvideo-mobile-hud {
+      --cv-bg: rgba(18, 20, 29, 0.92);
+      --cv-card: rgba(28, 32, 48, 0.85);
+      --cv-border: rgba(255, 255, 255, 0.15);
+      --cv-primary: #3b82f6;
+      --cv-success: #10b981;
+      --cv-text: #f8fafc;
+      --cv-text-muted: #94a3b8;
+      --cv-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+      position: fixed;
+      z-index: 2147483647;
+      font-family: var(--cv-font);
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      font-size: 14px;
+      color: var(--cv-text);
+      line-height: 1.4;
+      pointer-events: auto;
+    }
+    #cleanvideo-mobile-hud * { box-sizing: border-box; margin: 0; padding: 0; }
+    .cv-pill-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--cv-bg);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--cv-border);
+      padding: 7px 14px; border-radius: 9999px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      cursor: pointer; touch-action: none;
+    }
+    .cv-indicator-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cv-success); box-shadow: 0 0 8px var(--cv-success);
+    }
+    .cv-indicator-dot.disabled { background: #64748b; box-shadow: none; }
+    .cv-pill-label { font-weight: 700; font-size: 12px; color: #fff; letter-spacing: 0.2px; }
+    .cv-badge-count {
+      background: #2563eb; color: #fff; font-size: 11px; font-weight: 700;
+      padding: 1px 7px; border-radius: 12px; min-width: 18px; text-align: center;
+    }
+    .cv-sheet-modal {
+      display: none; position: fixed; bottom: 24px; right: 20px;
+      width: 310px; max-width: calc(100vw - 32px);
+      background: var(--cv-bg);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--cv-border); border-radius: 22px;
+      padding: 16px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65);
+    }
+    .cv-sheet-modal.open { display: block; }
+    .cv-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .cv-title-box { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: #fff; }
+    .cv-version-tag { background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
+    .cv-close-modal-btn {
+      background: rgba(255, 255, 255, 0.1); border: none; color: var(--cv-text-muted);
+      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+    }
+    .cv-power-card {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--cv-card); padding: 10px 12px; border-radius: 12px;
+      margin-bottom: 12px; border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .cv-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .cv-switch input { opacity: 0; width: 0; height: 0; }
+    .cv-slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #475569; transition: .3s ease; border-radius: 34px;
+    }
+    .cv-slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white; transition: .3s ease; border-radius: 50%;
+    }
+    input:checked + .cv-slider { background-color: var(--cv-success); }
+    input:checked + .cv-slider:before { transform: translateX(20px); }
+    .cv-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .cv-stat-box {
+      background: var(--cv-card); padding: 9px 8px; border-radius: 10px;
+      text-align: center; border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .cv-stat-val { font-size: 18px; font-weight: 800; color: #60a5fa; }
+    .cv-stat-label { font-size: 10px; color: var(--cv-text-muted); }
+    .cv-btn-action {
+      width: 100%; padding: 9px; background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1); color: #fff;
+      border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;
+    }
+    .cv-debug-panel {
+      margin-top: 8px; background: rgba(0, 0, 0, 0.5); border-radius: 8px;
+      padding: 8px; max-height: 110px; overflow-y: auto; font-family: monospace;
+      font-size: 10px; color: #cbd5e1; display: none;
+    }
+    .cv-debug-panel.show { display: block; }
+  `;
+
+  function injectHUDStyles() {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'cleanvideo-hud-styles';
+    styleEl.textContent = HUD_CSS;
+    (document.head || document.documentElement).appendChild(styleEl);
+  }
+
   class CleanVideoHUD {
     constructor(engine) {
       this.engine = engine;
@@ -845,7 +1247,10 @@
         </div>
         <div class="cv-sheet-modal" id="cv-sheet-modal">
           <div class="cv-modal-header">
-            <div class="cv-title-box">🛡️ CleanVideo iOS</div>
+            <div class="cv-title-box">
+              <span>🛡️ CleanVideo</span>
+              <span class="cv-version-tag">v2.0</span>
+            </div>
             <button class="cv-close-modal-btn" id="cv-close-btn">✕</button>
           </div>
           <div class="cv-power-card">
@@ -924,7 +1329,7 @@
   }
 
   /* ==========================================================================
-     10. BOOTSTRAP
+     12. BOOTSTRAP & INITIALIZATION
      ========================================================================== */
   const engine = new CleanVideoEngine(RULES);
   const hud = new CleanVideoHUD(engine);

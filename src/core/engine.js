@@ -1,6 +1,7 @@
 /**
- * CleanVideo Engine
- * Central Orchestrator for CleanVideo with Thai Ad Blocking & Video Ad Acceleration
+ * CleanVideo Engine (v2.0)
+ * Central Orchestrator integrating Timer Override, Player Hook,
+ * Layer-0 Redirect Guard, Skip Handler, Overlay Handler, and Popup Handler
  */
 
 class CleanVideoEngine {
@@ -17,9 +18,12 @@ class CleanVideoEngine {
     };
     this.debugLogs = [];
 
-    // Handlers
+    // Core Engines & Handlers
+    this.timerOverride = typeof CleanVideoTimerOverride !== 'undefined' ? new CleanVideoTimerOverride() : null;
+    this.playerHook = typeof CleanVideoPlayerHook !== 'undefined' ? new CleanVideoPlayerHook(this.handleAction.bind(this)) : null;
+
     this.detector = new CleanVideoDetector(this.rules);
-    this.skipHandler = new CleanVideoSkipHandler(this.detector, this.rules, this.handleAction.bind(this));
+    this.skipHandler = new CleanVideoSkipHandler(this.detector, this.rules, this.handleAction.bind(this), this.playerHook);
     this.popupHandler = new CleanVideoPopupHandler(this.detector, this.rules, this.handleAction.bind(this));
     this.overlayHandler = new CleanVideoOverlayHandler(this.detector, this.rules, this.handleAction.bind(this));
     this.redirectGuard = new CleanVideoRedirectGuard(this.handleAction.bind(this));
@@ -57,7 +61,7 @@ class CleanVideoEngine {
 
     if (action.type === 'closed_popup_button' || action.type === 'removed_popup_overlay' || action.type === 'removed_thai_ad_banner') {
       this.stats.popupsClosed++;
-    } else if (action.type === 'skip_ad') {
+    } else if (action.type === 'skip_ad' || action.type === 'neutralized_vast_config' || action.type === 'neutralized_jw_ads') {
       this.stats.adsSkipped++;
     } else if (action.type === 'neutralized_video_overlay') {
       this.stats.overlaysRemoved++;
@@ -78,31 +82,60 @@ class CleanVideoEngine {
   }
 
   /**
-   * Inject high-priority CSS rules to hide Thai ad banners & popups instantly
+   * Inject high-priority CSS rules to hide Thai ad banners & force show skip buttons
    */
   injectAdblockCSS() {
     if (document.getElementById('cleanvideo-adblock-rules')) return;
 
-    const hrefRules = (this.rules.global && this.rules.global.thaiAdHrefKeywords) || [
-      'ruay', 'ufa', 'slot', 'bet', 'casino', 'sagame', 'pgslot', 'gclub',
-      'ts911', 'sexygame', 'lotto', 'wmbet', 'hydra', 'baccarat', 'joker',
-      'lin.ee', 'line.me/R', 'cutt.ly', 'bit.ly', 'lihi1'
-    ];
-
+    const hrefRules = (this.rules.global && this.rules.global.thaiAdHrefKeywords) || [];
     const linkSelectors = hrefRules.map(k => `a[href*="${k}"]`).join(',\n');
     const containerSelectors = (this.rules.global && this.rules.global.popupSelectors || []).join(',\n');
 
     const css = `
-      ${linkSelectors},
-      ${containerSelectors},
+      /* 1. Instant Thai Banner and Popup Hiding */
+      ${linkSelectors ? linkSelectors + ',' : ''}
+      ${containerSelectors ? containerSelectors + ',' : ''}
       .ad-click-trap,
-      .video-mask-ad {
+      .video-mask-ad,
+      .fluid_ad_interstitial,
+      .fluid_ad_container,
+      .fluid_ad_text,
+      .fluid_ad_cta,
+      .fluid_ad_playing,
+      .fluid_vpaid_slot,
+      .jw-ad-container,
+      .jw-ad-overlay,
+      #player_inzad {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
         max-height: 0 !important;
         opacity: 0 !important;
         pointer-events: none !important;
+      }
+
+      /* 2. Force Show and Enable Skip Buttons Immediately */
+      .fluid_ad_skip,
+      .fluid_ad_skip_button,
+      .skip_button,
+      .ad_countdown,
+      .jw-skip,
+      .jw-skip-icon,
+      .video-ad-skip,
+      .ytp-skip-ad-button,
+      .ytp-ad-skip-button,
+      .ytp-ad-skip-button-modern,
+      [class*="skip-button"],
+      [class*="skip_button"],
+      [class*="skipAd"],
+      [class*="skip-btn"],
+      [id*="skip-ad"] {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        z-index: 2147483647 !important;
       }
     `;
 
@@ -115,30 +148,40 @@ class CleanVideoEngine {
   start() {
     if (!this.state.enabled || this.isCurrentSiteWhitelisted()) return;
 
-    console.log('[CleanVideo] Starting enhanced ad protection & video accelerator...');
+    console.log('[CleanVideo v2.0] Enhanced protection & video accelerator running...');
 
-    // 1. Instant CSS ad blocking
+    // 1. Install Timer Override Engine (50x countdown accelerator)
+    if (this.timerOverride) {
+      this.timerOverride.install();
+    }
+
+    // 2. Install Player API Hook (FluidPlayer / JWPlayer / VideoJS)
+    if (this.playerHook) {
+      this.playerHook.install();
+    }
+
+    // 3. Instant CSS ad blocking & skip-button forcing
     this.injectAdblockCSS();
 
-    // 2. Install redirect guard
+    // 4. Install Layer-0 Redirect Guard
     this.redirectGuard.install();
 
-    // 3. Initial fast scan
+    // 5. Initial fast scan
     this.runCycle();
 
-    // 4. Setup Battery-friendly Throttled MutationObserver
+    // 6. Setup Battery-friendly Throttled MutationObserver
     this.setupObserver();
 
-    // 5. Setup Video Playback & Ad Acceleration Listeners
+    // 7. Setup Video Playback & Ad Acceleration Listeners
     this.setupVideoListeners();
 
-    // 6. Fast-interval polling for active video playback (every 500ms)
+    // 8. Fast-interval polling for active video playback (every 350ms)
     setInterval(() => {
       if (this.state.enabled) {
         this.skipHandler.accelerateAdVideo();
         this.runCycle();
       }
-    }, 500);
+    }, 350);
   }
 
   setupObserver() {
@@ -169,7 +212,7 @@ class CleanVideoEngine {
       setTimeout(() => {
         this.runCycle();
         this.scanPending = false;
-      }, 50);
+      }, 40);
     });
   }
 
@@ -210,7 +253,7 @@ class CleanVideoEngine {
     };
 
     bindVideos();
-    setInterval(bindVideos, 2000);
+    setInterval(bindVideos, 1500);
   }
 
   toggleEnabled() {
@@ -219,6 +262,7 @@ class CleanVideoEngine {
     if (this.state.enabled) {
       this.start();
     } else {
+      if (this.timerOverride) this.timerOverride.uninstall();
       this.redirectGuard.uninstall();
       if (this.observer) this.observer.disconnect();
       const style = document.getElementById('cleanvideo-adblock-rules');
